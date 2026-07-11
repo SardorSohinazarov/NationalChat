@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Milliy Chat</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f3f7ff; margin: 0; padding: 20px; }
+        .chat-box { max-width: 700px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: #2563eb; color: white; padding: 16px 20px; font-size: 20px; }
+        .messages { height: 420px; overflow-y: auto; padding: 16px; background: #f8fbff; }
+        .message { margin: 10px 0; padding: 10px 12px; border-radius: 10px; max-width: 75%; }
+        .me { background: #dbeafe; margin-left: auto; text-align: right; }
+        .other { background: #e5e7eb; }
+        .input-area { display: flex; gap: 10px; padding: 16px; border-top: 1px solid #ddd; }
+        input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 8px; }
+        button { padding: 10px 16px; border: none; border-radius: 8px; background: #2563eb; color: white; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="chat-box">
+        <div class="header">Milliy Chat Dasturi</div>
+        <div class="messages" id="messages"></div>
+        <div class="input-area">
+            <input id="name" placeholder="Ismingiz" value="Foydalanuvchi" />
+            <input id="text" placeholder="Xabar yozing..." />
+            <button onclick="sendMessage()">Yuborish</button>
+        </div>
+    </div>
+
+    <script>
+        async function loadMessages() {
+            const res = await fetch('/api/chat/messages');
+            const data = await res.json();
+            const container = document.getElementById('messages');
+            container.innerHTML = '';
+            data.messages.forEach(msg => {
+                const div = document.createElement('div');
+                div.className = 'message ' + (msg.sender === document.getElementById('name').value ? 'me' : 'other');
+                div.innerHTML = `<strong>${msg.sender}</strong><div>${msg.text}</div>`;
+                container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const name = document.getElementById('name').value || 'Foydalanuvchi';
+            const text = document.getElementById('text').value;
+            if (!text) return;
+            await fetch('/api/chat/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sender: name, receiver: 'All', text })
+            });
+            document.getElementById('text').value = '';
+            await loadMessages();
+        }
+
+        window.onload = loadMessages;
+    </script>
+</body>
+</html>

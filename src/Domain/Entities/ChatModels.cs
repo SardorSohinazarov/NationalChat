@@ -1,5 +1,49 @@
 namespace API.Models;
 
+public enum ChatType
+{
+    Private,
+    Group,
+    Channel,
+    Secret
+}
+
+public enum ChatMemberRole
+{
+    Member,
+    Admin,
+    Creator
+}
+
+public enum PollType
+{
+    Regular,
+    Quiz,
+    MultipleChoice
+}
+
+public enum CallType
+{
+    Audio,
+    Video
+}
+
+public enum AttachmentType
+{
+    Photo,
+    Video,
+    File,
+    Sticker
+}
+
+public enum SubscriptionStatus
+{
+    Active,
+    Canceled,
+    Expired,
+    Pending
+}
+
 public class User
 {
     public int Id { get; set; }
@@ -13,16 +57,25 @@ public class User
     public ICollection<Message> SentMessages { get; set; } = new List<Message>();
     public ICollection<ChatMember> ChatMemberships { get; set; } = new List<ChatMember>();
     public ICollection<Reaction> Reactions { get; set; } = new List<Reaction>();
+    public ICollection<Session> Sessions { get; set; } = new List<Session>();
+    public ICollection<Subscription> Subscriptions { get; set; } = new List<Subscription>();
+    public ICollection<Story> Stories { get; set; } = new List<Story>();
+    public ICollection<Group> CreatedGroups { get; set; } = new List<Group>();
+    public ICollection<Contact> Contacts { get; set; } = new List<Contact>();
+    public ICollection<Contact> ContactedBy { get; set; } = new List<Contact>();
+    public ICollection<Bot> Bots { get; set; } = new List<Bot>();
 }
 
 public class Chat
 {
     public int Id { get; set; }
-    public string Type { get; set; } = string.Empty;
+    public ChatType Type { get; set; }
     public DateTime CreatedAt { get; set; }
 
     public ICollection<Message> Messages { get; set; } = new List<Message>();
     public ICollection<ChatMember> Members { get; set; } = new List<ChatMember>();
+    public ICollection<Group> Groups { get; set; } = new List<Group>();
+    public ICollection<Channel> Channels { get; set; } = new List<Channel>();
 }
 
 public class ChatMember
@@ -30,7 +83,7 @@ public class ChatMember
     public int Id { get; set; }
     public int ChatId { get; set; }
     public int UserId { get; set; }
-    public string Role { get; set; } = string.Empty;
+    public ChatMemberRole Role { get; set; }
     public DateTime JoinedAt { get; set; }
 
     public Chat Chat { get; set; }
@@ -51,6 +104,9 @@ public class Message
     public Message? ReplyToMessage { get; set; }
     public ICollection<Attachment> Attachments { get; set; } = new List<Attachment>();
     public ICollection<Reaction> Reactions { get; set; } = new List<Reaction>();
+    public ICollection<Poll> Polls { get; set; } = new List<Poll>();
+    public ICollection<MessageView> Views { get; set; } = new List<MessageView>();
+    public ICollection<SavedMessage> SavedMessages { get; set; } = new List<SavedMessage>();
 }
 
 public class Poll
@@ -61,7 +117,7 @@ public class Poll
     public string Question { get; set; } = string.Empty;
     public bool IsAnonymous { get; set; }
     public bool IsClosed { get; set; }
-    public string Type { get; set; } = string.Empty;
+    public PollType Type { get; set; }
 
     public ICollection<PollOption> Options { get; set; } = new List<PollOption>();
 }
@@ -94,7 +150,7 @@ public class Call
     public int ChatId { get; set; }
     public DateTime StartedAt { get; set; }
     public DateTime? EndedAt { get; set; }
-    public string Type { get; set; } = string.Empty;
+    public CallType Type { get; set; }
 
     public ICollection<CallParticipant> Participants { get; set; } = new List<CallParticipant>();
 }
@@ -116,7 +172,7 @@ public class Group
     public string? Description { get; set; }
     public string? InviteLink { get; set; }
     public int CreatorId { get; set; }
-    public User User { get; set; }
+    public User Creator { get; set; }
 }
 
 public class Sticker
@@ -125,6 +181,8 @@ public class Sticker
     public int SetId { get; set; }
     public string Emoji { get; set; } = string.Empty;
     public int FileId { get; set; }
+
+    public StickerSet StickerSet { get; set; }
 }
 
 public class StickerSet
@@ -134,6 +192,8 @@ public class StickerSet
     public string Name { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public bool IsAnimated { get; set; }
+
+    public ICollection<Sticker> Stickers { get; set; } = new List<Sticker>();
 }
 
 public class FolderChat
@@ -141,6 +201,9 @@ public class FolderChat
     public int Id { get; set; }
     public int FolderId { get; set; }
     public int ChatId { get; set; }
+
+    public Folder Folder { get; set; }
+    public Chat Chat { get; set; }
 }
 
 public class Folder
@@ -149,6 +212,9 @@ public class Folder
     public int UserId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Icon { get; set; } = string.Empty;
+
+    public User User { get; set; }
+    public ICollection<FolderChat> FolderChats { get; set; } = new List<FolderChat>();
 }
 
 public class Attachment
@@ -156,10 +222,10 @@ public class Attachment
     public int Id { get; set; }
     public int MessageId { get; set; }
     public int FileId { get; set; }
-    public string Type { get; set; } = string.Empty;
+    public AttachmentType Type { get; set; }
 
-    public Message? Message { get; set; }
-    public File? File { get; set; }
+    public Message Message { get; set; }
+    public File File { get; set; }
 }
 
 public class Story
@@ -171,6 +237,7 @@ public class Story
     public DateTime ExpiresAt { get; set; }
     public int ViewCount { get; set; }
 
+    public User User { get; set; }
     public ICollection<StoryView> Views { get; set; } = new List<StoryView>();
 }
 
@@ -178,23 +245,25 @@ public class Subscription
 {
     public int Id { get; set; }
     public int UserId { get; set; }
-    public User User { get; set; }
-    public string Status { get; set; } = string.Empty;
+    public SubscriptionStatus Status { get; set; }
     public DateTime StartDate { get; set; }
     public DateTime? EndDate { get; set; }
     public decimal PricePaid { get; set; }
+
+    public User User { get; set; }
 }
 
 public class Session
 {
     public int Id { get; set; }
     public int UserId { get; set; }
-    public User User { get; set; }
     public string DeviceName { get; set; } = string.Empty;
     public string SystemVersion { get; set; } = string.Empty;
     public string AppVersion { get; set; } = string.Empty;
     public string IpAddress { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
+
+    public User User { get; set; }
 }
 
 public class Reaction
@@ -215,6 +284,9 @@ public class BlockedUser
     public int UserId { get; set; }
     public int BlockedUserId { get; set; }
     public DateTime BlockedAt { get; set; }
+
+    public User User { get; set; }
+    public User BlockedUserRef { get; set; }
 }
 
 public class ChannelSubscriber
@@ -223,6 +295,9 @@ public class ChannelSubscriber
     public int ChannelId { get; set; }
     public int UserId { get; set; }
     public DateTime JoinedAt { get; set; }
+
+    public Channel Channel { get; set; }
+    public User User { get; set; }
 }
 
 public class SavedMessage
@@ -231,6 +306,9 @@ public class SavedMessage
     public int UserId { get; set; }
     public int MessageId { get; set; }
     public DateTime SavedAt { get; set; }
+
+    public User User { get; set; }
+    public Message Message { get; set; }
 }
 
 public class Bot
@@ -242,17 +320,20 @@ public class Bot
     public string? Commands { get; set; }
     public bool CanJoinGroups { get; set; }
     public bool InlineFeedback { get; set; }
+
+    public User User { get; set; }
 }
 
 public class Contact
 {
     public int Id { get; set; }
     public int UserId { get; set; }
-    public User User { get; set; }
     public int ContactUserId { get; set; }
-    public User ContactUser { get; set; }
     public string? CustomFirstName { get; set; }
     public string? CustomLastName { get; set; }
+
+    public User User { get; set; }
+    public User ContactUser { get; set; }
 }
 
 public class SecretChat
@@ -262,6 +343,9 @@ public class SecretChat
     public int ParticipantId { get; set; }
     public string EncryptionKey { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
+
+    public User Initiator { get; set; }
+    public User Participant { get; set; }
 }
 
 public class Channel
@@ -273,6 +357,9 @@ public class Channel
     public string? Description { get; set; }
     public string? InviteLink { get; set; }
     public bool SignatureEnabled { get; set; }
+
+    public Chat Chat { get; set; }
+    public ICollection<ChannelSubscriber> Subscribers { get; set; } = new List<ChannelSubscriber>();
 }
 
 public class CallParticipant
@@ -282,6 +369,9 @@ public class CallParticipant
     public int UserId { get; set; }
     public DateTime JoinedAt { get; set; }
     public DateTime? LeftAt { get; set; }
+
+    public Call Call { get; set; }
+    public User User { get; set; }
 }
 
 public class StoryView
@@ -290,6 +380,9 @@ public class StoryView
     public int StoryId { get; set; }
     public int UserId { get; set; }
     public DateTime ViewedAt { get; set; }
+
+    public Story Story { get; set; }
+    public User User { get; set; }
 }
 
 public class MessageView
@@ -298,6 +391,9 @@ public class MessageView
     public int MessageId { get; set; }
     public int UserId { get; set; }
     public DateTime ViewedAt { get; set; }
+
+    public Message Message { get; set; }
+    public User User { get; set; }
 }
 
 public class TwoFactorAuth
@@ -307,6 +403,8 @@ public class TwoFactorAuth
     public string PasswordHash { get; set; } = string.Empty;
     public string? Hint { get; set; }
     public string? RecoveryEmail { get; set; }
+
+    public User User { get; set; }
 }
 
 public class File

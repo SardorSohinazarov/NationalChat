@@ -1,3 +1,5 @@
+using File = Domain.Entities.File; 
+
 namespace Domain.Entities;
 
 public class User
@@ -120,6 +122,8 @@ public class Photo
     public int FileId { get; set; }
     public int Width { get; set; }
     public int Height { get; set; }
+
+    public File File { get; set; }
 }
 
 public class Group

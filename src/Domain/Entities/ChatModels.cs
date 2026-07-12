@@ -1,6 +1,4 @@
-using Domain.Entities;
-
-namespace API.Models;
+namespace Domain.Entities;
 
 public class User
 {

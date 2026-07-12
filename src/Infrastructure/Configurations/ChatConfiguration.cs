@@ -1,5 +1,6 @@
 using Domain.Constants;
 using Domain.Entities;
+using Infrastructure.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -12,7 +13,7 @@ public class ChatConfiguration : IEntityTypeConfiguration<Chat>
         builder.ToTable(Tables.Chats, Schemas.Chat);
 
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Type).HasConversion<string>();
+        builder.Property(x => x.Type).HasCommentFromEnum();
         builder.Property(x => x.CreatedAt).IsRequired();
 
         builder.HasMany(x => x.Messages)

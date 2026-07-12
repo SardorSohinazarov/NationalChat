@@ -1,5 +1,6 @@
 using Domain.Constants;
 using Domain.Entities;
+using Infrastructure.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -13,7 +14,7 @@ public class PollConfiguration : IEntityTypeConfiguration<Poll>
 
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Question).IsRequired().HasMaxLength(255);
-        builder.Property(x => x.Type).HasConversion<string>();
+        builder.Property(x => x.Type).HasCommentFromEnum();
 
         builder.HasOne(x => x.Message)
             .WithMany(x => x.Polls)

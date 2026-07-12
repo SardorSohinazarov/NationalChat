@@ -2,44 +2,44 @@
 
 public enum ChatType
 {
-    Private,
-    Group,
-    Channel,
-    Secret
+    Private = 1,
+    Group = 2,
+    Channel = 3,
+    Secret = 4
 }
 
 public enum ChatMemberRole
 {
-    Member,
-    Admin,
-    Creator
+    Member = 1,
+    Admin = 2,
+    Creator = 3
 }
 
 public enum PollType
 {
-    Regular,
-    Quiz,
-    MultipleChoice
+    Regular = 1,
+    Quiz = 2,
+    MultipleChoice = 3
 }
 
 public enum CallType
 {
-    Audio,
-    Video
+    Audio = 1,
+    Video = 2
 }
 
 public enum AttachmentType
 {
-    Photo,
-    Video,
-    File,
-    Sticker
+    Photo = 1,
+    Video = 2,
+    File = 3,
+    Sticker = 4
 }
 
 public enum SubscriptionStatus
 {
-    Active,
-    Canceled,
-    Expired,
-    Pending
+    Active = 1,
+    Canceled = 2,
+    Expired = 3,
+    Pending = 4
 }

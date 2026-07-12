@@ -1,5 +1,6 @@
 using Domain.Constants;
 using Domain.Entities;
+using Infrastructure.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -12,7 +13,7 @@ public class SubscriptionConfiguration : IEntityTypeConfiguration<Subscription>
         builder.ToTable(Tables.Subscriptions, Schemas.Personal);
 
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Status).HasConversion<string>();
+        builder.Property(x => x.Status).HasCommentFromEnum();
         builder.Property(x => x.StartDate).IsRequired();
         builder.Property(x => x.PricePaid).HasColumnType("decimal(10,2)");
 

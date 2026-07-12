@@ -18,5 +18,10 @@ public class StickerConfiguration : IEntityTypeConfiguration<Sticker>
             .WithMany(x => x.Stickers)
             .HasForeignKey(x => x.SetId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(x => x.File)
+            .WithMany()
+            .HasForeignKey(x => x.FileId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

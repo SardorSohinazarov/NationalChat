@@ -14,6 +14,11 @@ public class PollVoteConfiguration : IEntityTypeConfiguration<PollVote>
         builder.HasKey(x => x.Id);
         builder.Property(x => x.VotedAt).IsRequired();
 
+        builder.HasOne(x => x.Poll)
+            .WithMany()
+            .HasForeignKey(x => x.PollId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasOne(x => x.Option)
             .WithMany(x => x.Votes)
             .HasForeignKey(x => x.OptionId)

@@ -18,6 +18,11 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(x => x.LastName).HasMaxLength(100);
         builder.Property(x => x.Bio).HasMaxLength(255);
 
+        builder.HasOne(x => x.ProfilePhoto)
+            .WithMany()
+            .HasForeignKey(x => x.ProfilePhotoId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasMany(x => x.SentMessages)
             .WithOne(x => x.Sender)
             .HasForeignKey(x => x.SenderId)

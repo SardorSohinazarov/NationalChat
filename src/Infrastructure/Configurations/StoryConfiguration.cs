@@ -19,5 +19,10 @@ public class StoryConfiguration : IEntityTypeConfiguration<Story>
             .WithMany(x => x.Stories)
             .HasForeignKey(x => x.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(x => x.File)
+            .WithMany()
+            .HasForeignKey(x => x.FileId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

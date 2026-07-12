@@ -12,6 +12,7 @@ public class User
     public string? Bio { get; set; }
     public int? ProfilePhotoId { get; set; }
 
+    public Photo? ProfilePhoto { get; set; }
     public ICollection<Message> SentMessages { get; set; } = new List<Message>();
     public ICollection<ChatMember> ChatMemberships { get; set; } = new List<ChatMember>();
     public ICollection<Reaction> Reactions { get; set; } = new List<Reaction>();
@@ -71,12 +72,12 @@ public class Poll
 {
     public int Id { get; set; }
     public int MessageId { get; set; }
-    public Message Message { get; set; }
     public string Question { get; set; } = string.Empty;
     public bool IsAnonymous { get; set; }
     public bool IsClosed { get; set; }
     public PollType Type { get; set; }
 
+    public Message Message { get; set; }
     public ICollection<PollOption> Options { get; set; } = new List<PollOption>();
 }
 
@@ -98,6 +99,7 @@ public class PollVote
     public int UserId { get; set; }
     public DateTime VotedAt { get; set; }
 
+    public Poll Poll { get; set; }
     public User User { get; set; }
     public PollOption Option { get; set; }
 }
@@ -130,11 +132,12 @@ public class Group
 {
     public int Id { get; set; }
     public int ChatId { get; set; }
-    public Chat Chat { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string? InviteLink { get; set; }
     public int CreatorId { get; set; }
+
+    public Chat Chat { get; set; }
     public User Creator { get; set; }
 }
 
@@ -145,6 +148,7 @@ public class Sticker
     public string Emoji { get; set; } = string.Empty;
     public int FileId { get; set; }
 
+    public File File { get; set; }
     public StickerSet StickerSet { get; set; }
 }
 
@@ -156,6 +160,7 @@ public class StickerSet
     public string Title { get; set; } = string.Empty;
     public bool IsAnimated { get; set; }
 
+    public User Creator { get; set; }
     public ICollection<Sticker> Stickers { get; set; } = new List<Sticker>();
 }
 
@@ -201,6 +206,7 @@ public class Story
     public int ViewCount { get; set; }
 
     public User User { get; set; }
+    public File File { get; set; }
     public ICollection<StoryView> Views { get; set; } = new List<StoryView>();
 }
 
@@ -237,8 +243,8 @@ public class Reaction
     public string Emoji { get; set; } = string.Empty;
     public DateTime ReactedAt { get; set; }
 
-    public Message? Message { get; set; }
-    public User? User { get; set; }
+    public Message Message { get; set; }
+    public User User { get; set; }
 }
 
 public class BlockedUser

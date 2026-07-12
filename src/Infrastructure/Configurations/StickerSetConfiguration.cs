@@ -14,5 +14,10 @@ public class StickerSetConfiguration : IEntityTypeConfiguration<StickerSet>
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Name).IsRequired().HasMaxLength(100);
         builder.Property(x => x.Title).IsRequired().HasMaxLength(100);
+
+        builder.HasOne(x => x.Creator)
+            .WithMany()
+            .HasForeignKey(x => x.CreatorId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

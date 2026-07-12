@@ -16,10 +16,10 @@ public class CallConfiguration : IEntityTypeConfiguration<Call>
         builder.Property(x => x.Type).HasCommentFromEnum();
         builder.Property(x => x.StartedAt).IsRequired();
 
-        //builder.HasOne(x => x.Host)
-        //    .WithMany()
-        //    .HasForeignKey(x => x.HostId)
-        //    .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.Host)
+            .WithMany()
+            .HasForeignKey(x => x.HostId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(x => x.Chat)
             .WithMany()

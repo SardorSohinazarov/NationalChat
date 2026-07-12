@@ -1,3 +1,4 @@
+using Domain.Constants;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -8,6 +9,8 @@ public class StoryViewConfiguration : IEntityTypeConfiguration<StoryView>
 {
     public void Configure(EntityTypeBuilder<StoryView> builder)
     {
+        builder.ToTable(Tables.StoryViews, Schemas.Story);
+
         builder.HasKey(x => x.Id);
         builder.Property(x => x.ViewedAt).IsRequired();
 

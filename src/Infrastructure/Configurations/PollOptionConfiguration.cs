@@ -1,3 +1,4 @@
+using Domain.Constants;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -8,6 +9,8 @@ public class PollOptionConfiguration : IEntityTypeConfiguration<PollOption>
 {
     public void Configure(EntityTypeBuilder<PollOption> builder)
     {
+        builder.ToTable(Tables.PollOptions, Schemas.Messaging);
+
         builder.HasKey(x => x.Id);
         builder.Property(x => x.TextVal).IsRequired().HasMaxLength(100);
 

@@ -1,3 +1,4 @@
+using Domain.Constants;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -8,6 +9,8 @@ public class FolderChatConfiguration : IEntityTypeConfiguration<FolderChat>
 {
     public void Configure(EntityTypeBuilder<FolderChat> builder)
     {
+        builder.ToTable(Tables.FolderChats, Schemas.Personal);
+
         builder.HasKey(x => x.Id);
 
         builder.HasOne(x => x.Folder)

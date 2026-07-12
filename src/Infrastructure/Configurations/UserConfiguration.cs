@@ -1,3 +1,4 @@
+using Domain.Constants;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -8,6 +9,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> builder)
     {
+        builder.ToTable(Tables.Users, Schemas.Identity);
+
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Phone).IsRequired().HasMaxLength(20);
         builder.Property(x => x.Username).IsRequired().HasMaxLength(50);

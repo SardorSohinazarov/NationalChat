@@ -1,3 +1,4 @@
+using Domain.Constants;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -8,6 +9,8 @@ public class MessageViewConfiguration : IEntityTypeConfiguration<MessageView>
 {
     public void Configure(EntityTypeBuilder<MessageView> builder)
     {
+        builder.ToTable(Tables.MessageViews, Schemas.Messaging);
+
         builder.HasKey(x => x.Id);
         builder.Property(x => x.ViewedAt).IsRequired();
 

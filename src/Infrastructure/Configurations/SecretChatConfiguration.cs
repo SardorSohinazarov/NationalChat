@@ -1,3 +1,4 @@
+using Domain.Constants;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -8,6 +9,8 @@ public class SecretChatConfiguration : IEntityTypeConfiguration<SecretChat>
 {
     public void Configure(EntityTypeBuilder<SecretChat> builder)
     {
+        builder.ToTable(Tables.SecretChats, Schemas.Chat);
+
         builder.HasKey(x => x.Id);
         builder.Property(x => x.EncryptionKey).IsRequired().HasColumnType("TEXT");
         builder.Property(x => x.CreatedAt).IsRequired();

@@ -1,3 +1,4 @@
+using Domain.Constants;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -8,6 +9,8 @@ public class ReactionConfiguration : IEntityTypeConfiguration<Reaction>
 {
     public void Configure(EntityTypeBuilder<Reaction> builder)
     {
+        builder.ToTable(Tables.Reactions, Schemas.Messaging);
+
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Emoji).IsRequired().HasMaxLength(10);
         builder.Property(x => x.ReactedAt).IsRequired();

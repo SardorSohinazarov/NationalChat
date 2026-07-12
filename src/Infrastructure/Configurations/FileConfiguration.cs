@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Domain.Constants;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using File = Domain.Entities.File;
 
@@ -8,6 +9,8 @@ public class FileConfiguration : IEntityTypeConfiguration<File>
 {
     public void Configure(EntityTypeBuilder<File> builder)
     {
+        builder.ToTable(Tables.Files, Schemas.Storage);
+
         builder.HasKey(x => x.Id);
 
         builder.Property(x => x.Name)

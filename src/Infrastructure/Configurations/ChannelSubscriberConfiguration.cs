@@ -1,3 +1,4 @@
+using Domain.Constants;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -8,6 +9,8 @@ public class ChannelSubscriberConfiguration : IEntityTypeConfiguration<ChannelSu
 {
     public void Configure(EntityTypeBuilder<ChannelSubscriber> builder)
     {
+        builder.ToTable(Tables.ChannelSubscribers, Schemas.Chat);
+
         builder.HasKey(x => x.Id);
         builder.Property(x => x.JoinedAt).IsRequired();
 

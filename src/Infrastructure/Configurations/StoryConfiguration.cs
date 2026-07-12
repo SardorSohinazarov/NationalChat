@@ -1,3 +1,4 @@
+using Domain.Constants;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -8,6 +9,8 @@ public class StoryConfiguration : IEntityTypeConfiguration<Story>
 {
     public void Configure(EntityTypeBuilder<Story> builder)
     {
+        builder.ToTable(Tables.Stories, Schemas.Story);
+
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Caption).HasMaxLength(255);
         builder.Property(x => x.ExpiresAt).IsRequired();

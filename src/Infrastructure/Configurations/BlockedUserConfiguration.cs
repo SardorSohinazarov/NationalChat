@@ -1,3 +1,4 @@
+using Domain.Constants;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -8,6 +9,8 @@ public class BlockedUserConfiguration : IEntityTypeConfiguration<BlockedUser>
 {
     public void Configure(EntityTypeBuilder<BlockedUser> builder)
     {
+        builder.ToTable(Tables.BlockedUsers, Schemas.Identity);
+
         builder.HasKey(x => x.Id);
         builder.Property(x => x.BlockedAt).IsRequired();
 

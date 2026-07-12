@@ -1,3 +1,4 @@
+using Domain.Constants;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -8,6 +9,8 @@ public class SubscriptionConfiguration : IEntityTypeConfiguration<Subscription>
 {
     public void Configure(EntityTypeBuilder<Subscription> builder)
     {
+        builder.ToTable(Tables.Subscriptions, Schemas.Personal);
+
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Status).HasConversion<string>();
         builder.Property(x => x.StartDate).IsRequired();

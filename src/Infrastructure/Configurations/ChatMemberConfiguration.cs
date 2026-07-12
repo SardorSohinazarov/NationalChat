@@ -1,3 +1,4 @@
+using Domain.Constants;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -8,6 +9,8 @@ public class ChatMemberConfiguration : IEntityTypeConfiguration<ChatMember>
 {
     public void Configure(EntityTypeBuilder<ChatMember> builder)
     {
+        builder.ToTable(Tables.ChatMembers, Schemas.Chat);
+
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Role).HasConversion<string>();
         builder.Property(x => x.JoinedAt).IsRequired();

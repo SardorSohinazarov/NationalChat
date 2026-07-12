@@ -1,3 +1,4 @@
+using Domain.Constants;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -8,6 +9,8 @@ public class TwoFactorAuthConfiguration : IEntityTypeConfiguration<TwoFactorAuth
 {
     public void Configure(EntityTypeBuilder<TwoFactorAuth> builder)
     {
+        builder.ToTable(Tables.TwoFactorAuth, Schemas.Security);
+
         builder.HasKey(x => x.Id);
         builder.Property(x => x.PasswordHash).IsRequired().HasMaxLength(255);
         builder.Property(x => x.Hint).HasMaxLength(255);

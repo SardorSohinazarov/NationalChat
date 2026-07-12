@@ -1,3 +1,4 @@
+using Domain.Constants;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -8,6 +9,8 @@ public class StickerConfiguration : IEntityTypeConfiguration<Sticker>
 {
     public void Configure(EntityTypeBuilder<Sticker> builder)
     {
+        builder.ToTable(Tables.Stickers, Schemas.Storage);
+
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Emoji).IsRequired().HasMaxLength(10);
 

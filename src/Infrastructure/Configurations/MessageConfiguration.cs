@@ -1,3 +1,4 @@
+using Domain.Constants;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -8,6 +9,8 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
 {
     public void Configure(EntityTypeBuilder<Message> builder)
     {
+        builder.ToTable(Tables.Messages, Schemas.Messaging);
+
         builder.HasKey(x => x.Id);
         builder.Property(x => x.TextContent).HasColumnType("TEXT");
         builder.Property(x => x.SentAt).IsRequired();

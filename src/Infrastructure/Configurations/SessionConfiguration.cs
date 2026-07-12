@@ -1,3 +1,4 @@
+using Domain.Constants;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -8,6 +9,8 @@ public class SessionConfiguration : IEntityTypeConfiguration<Session>
 {
     public void Configure(EntityTypeBuilder<Session> builder)
     {
+        builder.ToTable(Tables.Sessions, Schemas.Security);
+
         builder.HasKey(x => x.Id);
         builder.Property(x => x.DeviceName).IsRequired().HasMaxLength(100);
         builder.Property(x => x.SystemVersion).IsRequired().HasMaxLength(50);

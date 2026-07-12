@@ -98,7 +98,8 @@ public class PollVote
     public int UserId { get; set; }
     public DateTime VotedAt { get; set; }
 
-    public PollOption? Option { get; set; }
+    public User User { get; set; }
+    public PollOption Option { get; set; }
 }
 
 public class Call
@@ -110,6 +111,7 @@ public class Call
     public DateTime? EndedAt { get; set; }
     public CallType Type { get; set; }
 
+    public Chat Chat { get; set; }
     public ICollection<CallParticipant> Participants { get; set; } = new List<CallParticipant>();
 }
 

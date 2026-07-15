@@ -16,7 +16,15 @@ public class SessionConfiguration : IEntityTypeConfiguration<Session>
         builder.Property(x => x.SystemVersion).IsRequired().HasMaxLength(50);
         builder.Property(x => x.AppVersion).IsRequired().HasMaxLength(50);
         builder.Property(x => x.IpAddress).IsRequired().HasMaxLength(45);
+        builder.Property(x => x.UserAgent).HasMaxLength(512);
+        builder.Property(x => x.RefreshTokenHash).IsRequired().HasMaxLength(128);
         builder.Property(x => x.CreatedAt).IsRequired();
+        builder.Property(x => x.LastActiveAt).IsRequired();
+        builder.Property(x => x.ExpiresAt).IsRequired();
+        builder.Property(x => x.RevokedAt);
+
+        builder.HasIndex(x => x.RefreshTokenHash).IsUnique();
+        builder.HasIndex(x => new { x.UserId, x.RevokedAt, x.ExpiresAt });
 
         builder.HasOne(x => x.User)
             .WithMany(x => x.Sessions)

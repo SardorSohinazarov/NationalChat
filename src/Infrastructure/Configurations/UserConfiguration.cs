@@ -12,11 +12,16 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.ToTable(Tables.Users, Schemas.Identity);
 
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Phone).IsRequired().HasMaxLength(20);
+        builder.Property(x => x.Email).IsRequired().HasMaxLength(254);
         builder.Property(x => x.Username).IsRequired().HasMaxLength(50);
         builder.Property(x => x.FirstName).IsRequired().HasMaxLength(100);
         builder.Property(x => x.LastName).HasMaxLength(100);
         builder.Property(x => x.Bio).HasMaxLength(255);
+        builder.Property(x => x.IsProfileCompleted).IsRequired();
+        builder.Property(x => x.CreatedAt).IsRequired();
+
+        builder.HasIndex(x => x.Email).IsUnique();
+        builder.HasIndex(x => x.Username).IsUnique();
 
         builder.HasOne(x => x.ProfilePhoto)
             .WithMany()

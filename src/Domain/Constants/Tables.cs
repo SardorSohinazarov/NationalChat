@@ -50,4 +50,5 @@ public static class Tables
     // Security
     public const string Sessions = "sessions";
     public const string TwoFactorAuth = "two_factor_auth";
+    public const string EmailVerificationCodes = "email_verification_codes";
 }

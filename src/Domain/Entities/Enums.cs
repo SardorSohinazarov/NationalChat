@@ -43,3 +43,10 @@ public enum SubscriptionStatus
     Expired = 3,
     Pending = 4
 }
+
+public enum VerificationCodePurpose
+{
+    SignIn = 1,
+    EnableTwoFactor = 2,
+    ResetTwoFactor = 3
+}

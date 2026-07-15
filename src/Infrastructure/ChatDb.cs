@@ -27,6 +27,7 @@ public class ChatDb : DbContext
     public DbSet<Story> Stories => Set<Story>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<Session> Sessions => Set<Session>();
+    public DbSet<EmailVerificationCode> EmailVerificationCodes => Set<EmailVerificationCode>();
     public DbSet<Reaction> Reactions => Set<Reaction>();
     public DbSet<BlockedUser> BlockedUsers => Set<BlockedUser>();
     public DbSet<ChannelSubscriber> ChannelSubscribers => Set<ChannelSubscriber>();

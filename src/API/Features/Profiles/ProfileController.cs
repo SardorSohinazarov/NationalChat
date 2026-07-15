@@ -15,14 +15,16 @@ public sealed class ProfileController(IProfileService profileService) : Controll
     public async Task<IActionResult> GetMyProfile(CancellationToken cancellationToken)
     {
         var profile = await profileService.GetMyProfileAsync(GetUserId(), cancellationToken);
-        return profile is null ? Unauthorized() : Ok(profile);
+        return profile is null ? Problem(title: "User aniqlanmadi", statusCode: StatusCodes.Status401Unauthorized) : Ok(profile);
     }
 
     [HttpPut]
     public async Task<IActionResult> UpdateMyProfile(UpdateProfileRequest request, CancellationToken cancellationToken)
     {
         var profile = await profileService.UpdateMyProfileAsync(GetUserId(), request, cancellationToken);
-        return profile is null ? BadRequest(new { error = "Profil ma'lumotlari noto'g'ri yoki username band." }) : Ok(profile);
+        return profile is null
+            ? Problem(title: "Profil yangilanmadi", detail: "Profil ma'lumotlari noto'g'ri yoki username band.", statusCode: StatusCodes.Status400BadRequest)
+            : Ok(profile);
     }
 
     private int GetUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);

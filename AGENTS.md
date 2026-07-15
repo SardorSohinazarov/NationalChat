@@ -20,6 +20,12 @@
 - PostgreSQL timestamp fields that represent an instant must use `timestamp with time zone`.
 - Use `DateOnly` for a calendar date that is not an instant in time.
 
+## Pagination
+
+- Use cursor (keyset) pagination for mutable, ordered data such as chats and messages; do not use page-number pagination there.
+- Use `beforeId` and a bounded `limit` (1-100) for loading older records, ordered by descending ID.
+- Return `items`, `nextCursor`, and `hasMore`; avoid `totalCount` unless a concrete UI requirement justifies its query cost.
+
 ## C# Style
 
 - Use primary constructors for dependency-injected classes when constructor parameters only initialize dependencies.

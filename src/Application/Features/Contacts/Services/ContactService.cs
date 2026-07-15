@@ -1,3 +1,4 @@
+using Application.DataTransferObjects.Pagination;
 using Application.Features.Contacts.DataTransferObjects.Requests;
 using Application.Features.Contacts.DataTransferObjects.Responses;
 using Domain.Entities;
@@ -6,8 +7,11 @@ namespace Application.Features.Contacts;
 
 public sealed class ContactService(IContactRepository repository) : IContactService
 {
-    public Task<IReadOnlyList<ContactDto>> GetContactsAsync(int userId, CancellationToken cancellationToken = default) =>
-        repository.GetContactsAsync(userId, cancellationToken);
+    public Task<CursorPagedResponse<ContactDto>> GetContactsAsync(
+        int userId,
+        CursorPaginationRequest pagination,
+        CancellationToken cancellationToken = default) =>
+        repository.GetContactsAsync(userId, pagination, cancellationToken);
 
     public async Task<ContactDto?> AddContactAsync(int userId, AddContactRequest request, CancellationToken cancellationToken = default)
     {

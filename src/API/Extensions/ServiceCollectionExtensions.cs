@@ -29,6 +29,7 @@ public static class ServiceCollectionExtensions
         var signingKey = jwtOptions.GetSigningKey();
 
         services.AddControllers();
+        services.AddProblemDetails();
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(options =>
         {

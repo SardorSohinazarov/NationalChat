@@ -1,4 +1,4 @@
-using Domain.Constants;
+using Infrastructure.Persistence.Constants;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;

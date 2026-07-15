@@ -20,6 +20,12 @@
 - PostgreSQL timestamp fields that represent an instant must use `timestamp with time zone`.
 - Use `DateOnly` for a calendar date that is not an instant in time.
 
+## Pagination
+
+- Use cursor (keyset) pagination for mutable, ordered data such as chats and messages; do not use page-number pagination there.
+- Use `beforeId` and a bounded `limit` (1-100) for loading older records, ordered by descending ID.
+- Return `items`, `nextCursor`, and `hasMore`; avoid `totalCount` unless a concrete UI requirement justifies its query cost.
+
 ## C# Style
 
 - Use primary constructors for dependency-injected classes when constructor parameters only initialize dependencies.
@@ -36,3 +42,5 @@
 - Keep HTTP controllers, middleware configuration, and transport concerns in the API layer.
 - Keep external technical adapters, including JWT token issuers, SMTP senders, persistence stores, and cryptographic implementations, in Infrastructure.
 - Keep DTOs in Application under `Features/<FeatureName>/DataTransferObjects`, grouped by purpose such as `Requests`, `Commands`, `Responses`, or `Session`.
+- Name persistence abstractions in Application as `I<Feature>Repository` and EF Core implementations in Infrastructure as `Ef<Feature>Repository`.
+- Place EF Core repositories under `Infrastructure/Persistence/Repositories` and inherit from `BaseRepository<TEntity>` when applicable.

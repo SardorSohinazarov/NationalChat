@@ -1,6 +1,8 @@
 using Application.Features.Authentication;
+using Application.Features.Contacts;
+using Application.Features.Profiles;
 using Infrastructure.Persistence;
-using Infrastructure.Persistence.Stores;
+using Infrastructure.Persistence.Repositories;
 using Infrastructure.Security.Hashing;
 using Infrastructure.Security.Jwt;
 using Infrastructure.Security.Options;
@@ -27,6 +29,7 @@ public static class ServiceCollectionExtensions
         var signingKey = jwtOptions.GetSigningKey();
 
         services.AddControllers();
+        services.AddProblemDetails();
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(options =>
         {
@@ -70,7 +73,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(smtpOptions);
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<IAuthService, AuthService>();
-        services.AddScoped<IAuthStore, EfAuthStore>();
+        services.AddScoped<IAuthRepository, AuthRepository>();
+        services.AddScoped<IProfileService, ProfileService>();
+        services.AddScoped<IProfileRepository, ProfileRepository>();
+        services.AddScoped<IContactService, ContactService>();
+        services.AddScoped<IContactRepository, ContactRepository>();
         services.AddSingleton<IOneTimeCodeHasher, Pbkdf2OneTimeCodeHasher>();
         services.AddSingleton<IRefreshTokenHasher, HmacRefreshTokenHasher>();
         services.AddSingleton<IRegistrationTokenService, HmacRegistrationTokenService>();

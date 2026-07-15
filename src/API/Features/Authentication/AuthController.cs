@@ -27,8 +27,8 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         }
 
         return result.RetryAfter is null
-            ? BadRequest(new { error = result.Error })
-            : StatusCode(StatusCodes.Status429TooManyRequests, new { error = result.Error, retryAfter = result.RetryAfter });
+            ? Problem(title: "Tasdiqlash kodi yuborilmadi", detail: result.Error, statusCode: StatusCodes.Status400BadRequest)
+            : Problem(title: "So'rov limiti tugadi", detail: result.Error, statusCode: StatusCodes.Status429TooManyRequests);
     }
 
     [HttpPost("verify-code")]
@@ -40,7 +40,7 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
 
         if (!result.IsSuccessful)
         {
-            return BadRequest(new { error = result.Error });
+            return Problem(title: "Tasdiqlash kodi noto'g'ri", detail: result.Error, statusCode: StatusCodes.Status400BadRequest);
         }
 
         if (result.RegistrationRequired)
@@ -70,7 +70,7 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
 
         if (!result.IsSuccessful)
         {
-            return BadRequest(new { error = result.Error });
+            return Problem(title: "Ro'yxatdan o'tish bajarilmadi", detail: result.Error, statusCode: StatusCodes.Status400BadRequest);
         }
 
         WriteRefreshCookie(result.Tokens!);
@@ -86,14 +86,14 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     {
         if (!Request.Cookies.TryGetValue(RefreshCookieName, out var refreshToken))
         {
-            return Unauthorized();
+            return Problem(title: "Refresh token topilmadi", statusCode: StatusCodes.Status401Unauthorized);
         }
 
         var tokens = await authService.RefreshSessionAsync(new RefreshSessionCommand(refreshToken, GetIpAddress()), cancellationToken);
         if (tokens is null)
         {
             DeleteRefreshCookie();
-            return Unauthorized();
+            return Problem(title: "Session yaroqsiz", statusCode: StatusCodes.Status401Unauthorized);
         }
 
         WriteRefreshCookie(tokens);
@@ -106,7 +106,7 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     {
         if (!TryGetCurrentSession(out var userId, out var sessionId))
         {
-            return Unauthorized();
+            return Problem(title: "Session yaroqsiz", statusCode: StatusCodes.Status401Unauthorized);
         }
 
         await authService.LogoutAsync(userId, sessionId, cancellationToken);
@@ -121,7 +121,7 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         var userId = GetCurrentUserId();
         if (userId is null)
         {
-            return Unauthorized();
+            return Problem(title: "User aniqlanmadi", statusCode: StatusCodes.Status401Unauthorized);
         }
 
         await authService.LogoutAllAsync(userId.Value, cancellationToken);
@@ -136,7 +136,7 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         var userId = GetCurrentUserId();
         if (userId is null)
         {
-            return Unauthorized();
+            return Problem(title: "User aniqlanmadi", statusCode: StatusCodes.Status401Unauthorized);
         }
 
         return Ok(await authService.GetActiveSessionsAsync(userId.Value, cancellationToken));

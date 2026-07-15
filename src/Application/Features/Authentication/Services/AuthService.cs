@@ -8,7 +8,7 @@ using Domain.Entities;
 namespace Application.Features.Authentication;
 
 public sealed class AuthService(
-    IAuthStore store,
+    IAuthRepository store,
     IOneTimeCodeHasher codeHasher,
     IRefreshTokenHasher refreshTokenHasher,
     IAccessTokenIssuer accessTokenIssuer,

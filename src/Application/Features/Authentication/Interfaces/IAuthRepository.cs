@@ -1,8 +1,9 @@
+using Application.Abstractions.Persistence;
 using Domain.Entities;
 
 namespace Application.Features.Authentication;
 
-public interface IAuthStore
+public interface IAuthRepository : IBaseRepository<User>
 {
     Task<EmailVerificationCode?> GetLatestActiveVerificationCodeAsync(string email, VerificationCodePurpose purpose, DateTime now, CancellationToken cancellationToken);
     Task<int> CountVerificationCodesAsync(string email, DateTime since, CancellationToken cancellationToken);
@@ -15,5 +16,4 @@ public interface IAuthStore
     Task<Session?> FindSessionByRefreshTokenHashAsync(string refreshTokenHash, CancellationToken cancellationToken);
     Task<Session?> FindSessionAsync(int userId, int sessionId, CancellationToken cancellationToken);
     Task<IReadOnlyList<Session>> GetActiveSessionsAsync(int userId, DateTime now, CancellationToken cancellationToken);
-    Task SaveChangesAsync(CancellationToken cancellationToken);
 }

@@ -36,3 +36,5 @@
 - Keep HTTP controllers, middleware configuration, and transport concerns in the API layer.
 - Keep external technical adapters, including JWT token issuers, SMTP senders, persistence stores, and cryptographic implementations, in Infrastructure.
 - Keep DTOs in Application under `Features/<FeatureName>/DataTransferObjects`, grouped by purpose such as `Requests`, `Commands`, `Responses`, or `Session`.
+- Name persistence abstractions in Application as `I<Feature>Repository` and EF Core implementations in Infrastructure as `Ef<Feature>Repository`.
+- Place EF Core repositories under `Infrastructure/Persistence/Repositories` and inherit from `BaseRepository<TEntity>` when applicable.

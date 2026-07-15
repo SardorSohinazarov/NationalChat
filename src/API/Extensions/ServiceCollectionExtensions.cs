@@ -1,4 +1,5 @@
 using Application.Features.Authentication;
+using Application.Features.Contacts;
 using Application.Features.Profiles;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Repositories;
@@ -74,6 +75,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAuthRepository, AuthRepository>();
         services.AddScoped<IProfileService, ProfileService>();
         services.AddScoped<IProfileRepository, ProfileRepository>();
+        services.AddScoped<IContactService, ContactService>();
+        services.AddScoped<IContactRepository, ContactRepository>();
         services.AddSingleton<IOneTimeCodeHasher, Pbkdf2OneTimeCodeHasher>();
         services.AddSingleton<IRefreshTokenHasher, HmacRefreshTokenHasher>();
         services.AddSingleton<IRegistrationTokenService, HmacRegistrationTokenService>();

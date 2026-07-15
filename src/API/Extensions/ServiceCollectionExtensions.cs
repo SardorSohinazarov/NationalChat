@@ -1,11 +1,13 @@
-using API.Authentication;
-using API.Email;
-using Application.Authentication;
-using Infrastructure;
-using Infrastructure.Authentication;
+using Application.Features.Authentication;
+using Infrastructure.Persistence;
+using Infrastructure.Persistence.Stores;
+using Infrastructure.Security.Hashing;
+using Infrastructure.Security.Jwt;
+using Infrastructure.Security.Options;
+using Infrastructure.Security.Tokens;
+using Infrastructure.Email;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
@@ -13,7 +15,7 @@ namespace API.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddNationalChatServices(
+    public static IServiceCollection AddServices(
         this IServiceCollection services,
         IConfiguration configuration,
         IWebHostEnvironment environment)

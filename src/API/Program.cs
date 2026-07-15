@@ -2,7 +2,7 @@ using API.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddNationalChatServices(builder.Configuration, builder.Environment);
+builder.Services.AddServices(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
 

@@ -1,5 +1,15 @@
 # NationalChat Development Rules
 
+## Clean Architecture
+
+- Follow Clean Architecture for every new feature and refactor.
+- `Domain` contains business entities, value types, enums, and domain rules only. It must not reference other projects or framework/persistence concerns.
+- `Application` contains use cases, DTOs, and interfaces (ports). It may reference only `Domain`.
+- `Infrastructure` implements Application interfaces for databases, external services, email, cryptography, and other technical concerns. It may reference `Application` and `Domain`.
+- `API` is the composition root and HTTP transport layer. It may reference `Application` and `Infrastructure`, but business logic must not be placed in controllers or `Program.cs`.
+- Dependencies must always point inward: `API -> Infrastructure -> Application -> Domain`.
+- Do not let `Domain` or `Application` reference `Infrastructure` or `API`.
+
 ## Time Handling
 
 - All persisted timestamps and API timestamps must use UTC.
@@ -20,3 +30,9 @@
 - Keep service registrations out of `Program.cs`.
 - Group service registrations in focused `IServiceCollection` extension methods under an `Extensions` folder.
 - Keep `Program.cs` limited to application bootstrap and middleware pipeline configuration.
+
+## Layer Boundaries
+
+- Keep HTTP controllers, middleware configuration, and transport concerns in the API layer.
+- Keep external technical adapters, including JWT token issuers, SMTP senders, persistence stores, and cryptographic implementations, in Infrastructure.
+- Keep DTOs in Application under `Features/<FeatureName>/DataTransferObjects`, grouped by purpose such as `Requests`, `Commands`, `Responses`, or `Session`.

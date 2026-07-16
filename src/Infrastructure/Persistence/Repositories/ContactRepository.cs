@@ -1,6 +1,7 @@
 using Application.Features.Contacts;
 using Application.DataTransferObjects.Pagination;
 using Application.Features.Contacts.DataTransferObjects.Responses;
+using Application.Features.Contacts.Mappers;
 using Domain.Entities;
 using Infrastructure.Persistence.Extensions;
 using Microsoft.EntityFrameworkCore;
@@ -24,7 +25,7 @@ public sealed class ContactRepository(ChatDb db) : BaseRepository<Contact>(db), 
             .ToCursorPagedResponseAsync(
                 pagination,
                 x => x.Id,
-                x => new ContactDto(x.Id, x.ContactUserId, x.ContactUser.Username, x.ContactUser.FirstName, x.ContactUser.LastName, x.CustomFirstName, x.CustomLastName),
+                ContactMapper.Projection,
                 x => x.Id,
                 cancellationToken);
 

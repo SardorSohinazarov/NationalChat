@@ -1,5 +1,7 @@
 using Application.Features.Chats.DataTransferObjects.Requests;
 using Application.Features.Chats.DataTransferObjects.Responses;
+using Application.Features.Chats.Factories;
+using Application.Features.Chats.Mappers;
 using Domain.Entities;
 using FluentValidation;
 
@@ -30,28 +32,13 @@ public sealed class ChatService(
         var chat = await repository.FindPrivateChatAsync(currentUserId, participant.Id, cancellationToken);
         if (chat is not null)
         {
-            return Map(chat, participant.Id);
+            return PrivateChatMapper.ToDto(chat, participant.Id);
         }
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
-        chat = new Chat
-        {
-            Type = ChatType.Private,
-            CreatedAt = now,
-            Members =
-            [
-                new ChatMember { UserId = currentUserId, Role = ChatMemberRole.Member, JoinedAt = now },
-                new ChatMember { UserId = participant.Id, Role = ChatMemberRole.Member, JoinedAt = now }
-            ]
-        };
+        chat = PrivateChatFactory.Create(currentUserId, participant.Id, now);
         await repository.AddAsync(chat, cancellationToken);
         await repository.SaveChangesAsync(cancellationToken);
-        return new(chat.Id, chat.CreatedAt, new(participant.Id, participant.Username, participant.FirstName, participant.LastName, participant.ProfilePhotoId));
-    }
-
-    private static PrivateChatDto Map(Chat chat, int participantId)
-    {
-        var participant = chat.Members.Single(x => x.UserId == participantId).User;
-        return new(chat.Id, chat.CreatedAt, new(participant.Id, participant.Username, participant.FirstName, participant.LastName, participant.ProfilePhotoId));
+        return PrivateChatMapper.ToDto(chat, participant);
     }
 }

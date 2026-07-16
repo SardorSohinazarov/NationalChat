@@ -1,5 +1,6 @@
 using Application.Features.Users;
 using Application.Features.Users.DataTransferObjects.Responses;
+using Application.Features.Users.Mappers;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Persistence.Repositories;
@@ -14,6 +15,6 @@ public sealed class UserDiscoveryRepository(ChatDb db) : IUserDiscoveryRepositor
                  (x.LastName != null && EF.Functions.ILike(x.LastName, $"{query}%"))))
             .OrderBy(x => x.Username)
             .Take(limit)
-            .Select(x => new UserSearchDto(x.Id, x.Username, x.FirstName, x.LastName, x.ProfilePhotoId))
+            .Select(UserSearchMapper.Projection)
             .ToListAsync(cancellationToken);
 }

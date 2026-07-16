@@ -1,5 +1,6 @@
 using Application.Features.Profiles.DataTransferObjects.Requests;
 using Application.Features.Profiles.DataTransferObjects.Responses;
+using Application.Features.Profiles.Mappers;
 using Domain.Entities;
 using FluentValidation;
 
@@ -10,7 +11,7 @@ public sealed class ProfileService(IProfileRepository store, IValidator<UpdatePr
     public async Task<ProfileDto?> GetMyProfileAsync(int userId, CancellationToken cancellationToken = default)
     {
         var user = await store.GetUserAsync(userId, cancellationToken);
-        return user is null ? null : Map(user);
+        return user is null ? null : ProfileMapper.ToDto(user);
     }
 
     public async Task<ProfileDto?> UpdateMyProfileAsync(int userId, UpdateProfileRequest request, CancellationToken cancellationToken = default)
@@ -34,11 +35,8 @@ public sealed class ProfileService(IProfileRepository store, IValidator<UpdatePr
         user.LastName = string.IsNullOrWhiteSpace(request.LastName) ? null : request.LastName.Trim();
         user.Bio = string.IsNullOrWhiteSpace(request.Bio) ? null : request.Bio.Trim()[..Math.Min(request.Bio.Trim().Length, 255)];
         await store.SaveChangesAsync(cancellationToken);
-        return Map(user);
+        return ProfileMapper.ToDto(user);
     }
-
-    private static ProfileDto Map(User user) =>
-        new(user.Id, user.Email, user.Username, user.FirstName, user.LastName, user.Bio, user.ProfilePhotoId, user.CreatedAt);
 
     private static string? NormalizeUsername(string username)
     {

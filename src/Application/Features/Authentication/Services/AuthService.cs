@@ -3,6 +3,8 @@ using System.Security.Cryptography;
 using Application.Features.Authentication.DataTransferObjects.Commands;
 using Application.Features.Authentication.DataTransferObjects.Responses;
 using Application.Features.Authentication.DataTransferObjects.Session;
+using Application.Features.Authentication.Factories;
+using Application.Features.Authentication.Mappers;
 using FluentValidation;
 using Domain.Entities;
 
@@ -137,15 +139,7 @@ public sealed class AuthService(
             return new(false, null, "Email yoki username band.");
         }
 
-        var user = new User
-        {
-            Email = email,
-            Username = username,
-            FirstName = command.FirstName.Trim(),
-            LastName = string.IsNullOrWhiteSpace(command.LastName) ? null : command.LastName.Trim(),
-            IsProfileCompleted = true,
-            CreatedAt = now
-        };
+        var user = AuthEntityFactory.CreateUser(email, username, command.FirstName, command.LastName, now);
         await store.AddUserAsync(user, cancellationToken);
         await store.SaveChangesAsync(cancellationToken);
 
@@ -209,28 +203,14 @@ public sealed class AuthService(
     public async Task<IReadOnlyList<ActiveSessionDto>> GetActiveSessionsAsync(int userId, CancellationToken cancellationToken = default)
     {
         var sessions = await store.GetActiveSessionsAsync(userId, timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
-        return sessions.Select(x => new ActiveSessionDto(
-            x.Id, x.DeviceName, x.SystemVersion, x.AppVersion, x.IpAddress,
-            x.CreatedAt, x.LastActiveAt, x.ExpiresAt)).ToList();
+        return sessions.Select(ActiveSessionMapper.ToDto).ToList();
     }
 
     private async Task<TokenPair> CreateSessionAsync(User user, AuthSessionMetadata metadata, DateTime now, CancellationToken cancellationToken)
     {
         var refreshToken = CreateRefreshToken();
         var expiresAt = now.Add(options.RefreshTokenLifetime);
-        var session = new Session
-        {
-            UserId = user.Id,
-            DeviceName = Limit(metadata.DeviceName, 100, "Unknown device"),
-            SystemVersion = Limit(metadata.SystemVersion, 50, "Unknown"),
-            AppVersion = Limit(metadata.AppVersion, 50, "Unknown"),
-            IpAddress = Limit(metadata.IpAddress, 45, "Unknown"),
-            UserAgent = string.IsNullOrWhiteSpace(metadata.UserAgent) ? null : metadata.UserAgent[..Math.Min(metadata.UserAgent.Length, 512)],
-            RefreshTokenHash = refreshTokenHasher.Hash(refreshToken),
-            CreatedAt = now,
-            LastActiveAt = now,
-            ExpiresAt = expiresAt
-        };
+        var session = AuthEntityFactory.CreateSession(user.Id, metadata, refreshTokenHasher.Hash(refreshToken), now, expiresAt);
         await store.AddSessionAsync(session, cancellationToken);
         await store.SaveChangesAsync(cancellationToken);
 
@@ -270,9 +250,4 @@ public sealed class AuthService(
 
     private static string CreateRefreshToken() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
 
-    private static string Limit(string value, int maxLength, string fallback)
-    {
-        var normalized = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-        return normalized[..Math.Min(normalized.Length, maxLength)];
-    }
 }

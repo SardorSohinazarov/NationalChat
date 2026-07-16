@@ -1,6 +1,8 @@
 using Application.DataTransferObjects.Pagination;
 using Application.Features.Contacts.DataTransferObjects.Requests;
 using Application.Features.Contacts.DataTransferObjects.Responses;
+using Application.Features.Contacts.Factories;
+using Application.Features.Contacts.Mappers;
 using Domain.Entities;
 using FluentValidation;
 
@@ -29,16 +31,11 @@ public sealed class ContactService(IContactRepository repository, IValidator<Add
             return null;
         }
 
-        var contact = new Contact
-        {
-            UserId = userId,
-            ContactUserId = contactUser.Id,
-            CustomFirstName = string.IsNullOrWhiteSpace(request.CustomFirstName) ? null : request.CustomFirstName.Trim(),
-            CustomLastName = string.IsNullOrWhiteSpace(request.CustomLastName) ? null : request.CustomLastName.Trim()
-        };
+        var contact = ContactFactory.Create(userId, contactUser.Id, request.CustomFirstName, request.CustomLastName);
         await repository.AddAsync(contact, cancellationToken);
         await repository.SaveChangesAsync(cancellationToken);
-        return new(contact.Id, contactUser.Id, contactUser.Username, contactUser.FirstName, contactUser.LastName, contact.CustomFirstName, contact.CustomLastName);
+        contact.ContactUser = contactUser;
+        return ContactMapper.ToDto(contact);
     }
 
     public async Task<bool> DeleteContactAsync(int userId, int contactId, CancellationToken cancellationToken = default)

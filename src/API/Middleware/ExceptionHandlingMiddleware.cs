@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+using API.DataTransferObjects.Responses;
 
 namespace API.Middleware;
 
@@ -26,20 +26,11 @@ public sealed class ExceptionHandlingMiddleware(
                 throw;
             }
 
-            var problem = new ProblemDetails
-            {
-                Status = StatusCodes.Status500InternalServerError,
-                Title = "Kutilmagan server xatoligi",
-                Detail = "So'rovni bajarishda xatolik yuz berdi. Keyinroq qayta urinib ko'ring.",
-                Instance = context.Request.Path
-            };
-            problem.Extensions["traceId"] = context.TraceIdentifier;
-
             context.Response.Clear();
-            context.Response.StatusCode = problem.Status.Value;
-            context.Response.ContentType = "application/problem+json";
-
-            await context.Response.WriteAsJsonAsync(problem, cancellationToken: context.RequestAborted);
+            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+            await context.Response.WriteAsJsonAsync(
+                Result.Fail("Kutilmagan server xatoligi. Keyinroq qayta urinib ko'ring."),
+                cancellationToken: context.RequestAborted);
         }
     }
 }

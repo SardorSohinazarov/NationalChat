@@ -12,6 +12,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Mvc;
+using System.Text.Json.Serialization;
+using API.DataTransferObjects.Responses;
 
 namespace API.Extensions;
 
@@ -28,8 +31,20 @@ public static class ServiceCollectionExtensions
         var smtpOptions = configuration.GetSection("Smtp").Get<SmtpOptions>() ?? new SmtpOptions();
         var signingKey = jwtOptions.GetSigningKey();
 
-        services.AddControllers();
-        services.AddProblemDetails();
+        services.AddControllers().AddJsonOptions(options =>
+            options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull);
+        services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =>
+            options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull);
+        services.Configure<ApiBehaviorOptions>(options => options.InvalidModelStateResponseFactory = context =>
+        {
+            var message = string.Join(" ", context.ModelState.Values
+                .SelectMany(x => x.Errors)
+                .Select(x => x.ErrorMessage)
+                .Where(x => !string.IsNullOrWhiteSpace(x)));
+
+            return new BadRequestObjectResult(Result.Fail(
+                string.IsNullOrWhiteSpace(message) ? "So'rov ma'lumotlari noto'g'ri." : message));
+        });
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(options =>
         {
@@ -54,16 +69,33 @@ public static class ServiceCollectionExtensions
         services.AddDbContext<ChatDb>(options =>
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options => options.TokenValidationParameters = new TokenValidationParameters
+            .AddJwtBearer(options =>
             {
-                ValidateIssuer = true,
-                ValidIssuer = jwtOptions.Issuer,
-                ValidateAudience = true,
-                ValidAudience = jwtOptions.Audience,
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(signingKey),
-                ValidateLifetime = true,
-                ClockSkew = TimeSpan.FromMinutes(1)
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidIssuer = jwtOptions.Issuer,
+                    ValidateAudience = true,
+                    ValidAudience = jwtOptions.Audience,
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(signingKey),
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.FromMinutes(1)
+                };
+                options.Events = new JwtBearerEvents
+                {
+                    OnChallenge = async context =>
+                    {
+                        context.HandleResponse();
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        await context.Response.WriteAsJsonAsync(Result.Fail("Autentifikatsiya talab qilinadi."));
+                    },
+                    OnForbidden = async context =>
+                    {
+                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                        await context.Response.WriteAsJsonAsync(Result.Fail("Bu amal uchun ruxsat yo'q."));
+                    }
+                };
             });
         services.AddAuthorization();
 

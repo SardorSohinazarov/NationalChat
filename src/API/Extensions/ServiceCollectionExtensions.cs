@@ -3,6 +3,8 @@ using Application.Features.Authentication;
 using Application.Features.Authentication.Validators;
 using Application.Features.Contacts;
 using Application.Features.Profiles;
+using Application.Features.Chats;
+using Application.Features.Users;
 using Infrastructure.Email;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Repositories;
@@ -84,6 +86,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAuthRepository, AuthRepository>();
         services.AddScoped<IProfileRepository, ProfileRepository>();
         services.AddScoped<IContactRepository, ContactRepository>();
+        services.AddScoped<IChatRepository, ChatRepository>();
+        services.AddScoped<IUserDiscoveryRepository, UserDiscoveryRepository>();
         return services;
     }
 
@@ -123,6 +127,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IProfileService, ProfileService>();
         services.AddScoped<IContactService, ContactService>();
+        services.AddScoped<IChatService, ChatService>();
+        services.AddScoped<IUserDiscoveryService, UserDiscoveryService>();
         return services;
     }
 

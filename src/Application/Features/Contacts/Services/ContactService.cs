@@ -2,10 +2,11 @@ using Application.DataTransferObjects.Pagination;
 using Application.Features.Contacts.DataTransferObjects.Requests;
 using Application.Features.Contacts.DataTransferObjects.Responses;
 using Domain.Entities;
+using FluentValidation;
 
 namespace Application.Features.Contacts;
 
-public sealed class ContactService(IContactRepository repository) : IContactService
+public sealed class ContactService(IContactRepository repository, IValidator<AddContactRequest> addContactValidator) : IContactService
 {
     public Task<CursorPagedResponse<ContactDto>> GetContactsAsync(
         int userId,
@@ -15,6 +16,12 @@ public sealed class ContactService(IContactRepository repository) : IContactServ
 
     public async Task<ContactDto?> AddContactAsync(int userId, AddContactRequest request, CancellationToken cancellationToken = default)
     {
+        var validation = await addContactValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            return null;
+        }
+
         var identifier = request.UsernameOrEmail.Trim().ToLowerInvariant();
         var contactUser = await repository.FindUserAsync(identifier, cancellationToken);
         if (contactUser is null || contactUser.Id == userId || await repository.ContactExistsAsync(userId, contactUser.Id, cancellationToken))

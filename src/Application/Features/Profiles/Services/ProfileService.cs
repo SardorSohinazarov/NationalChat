@@ -1,10 +1,11 @@
 using Application.Features.Profiles.DataTransferObjects.Requests;
 using Application.Features.Profiles.DataTransferObjects.Responses;
 using Domain.Entities;
+using FluentValidation;
 
 namespace Application.Features.Profiles;
 
-public sealed class ProfileService(IProfileRepository store) : IProfileService
+public sealed class ProfileService(IProfileRepository store, IValidator<UpdateProfileRequest> updateProfileValidator) : IProfileService
 {
     public async Task<ProfileDto?> GetMyProfileAsync(int userId, CancellationToken cancellationToken = default)
     {
@@ -14,11 +15,13 @@ public sealed class ProfileService(IProfileRepository store) : IProfileService
 
     public async Task<ProfileDto?> UpdateMyProfileAsync(int userId, UpdateProfileRequest request, CancellationToken cancellationToken = default)
     {
-        var username = NormalizeUsername(request.Username);
-        if (username is null || string.IsNullOrWhiteSpace(request.FirstName))
+        var validation = await updateProfileValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
         {
             return null;
         }
+
+        var username = NormalizeUsername(request.Username)!;
 
         var user = await store.GetUserAsync(userId, cancellationToken);
         if (user is null || (username != user.Username && await store.UsernameExistsAsync(username, userId, cancellationToken)))

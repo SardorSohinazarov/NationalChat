@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using Application.Features.Authentication.DataTransferObjects.Commands;
 using Application.Features.Authentication.DataTransferObjects.Responses;
 using Application.Features.Authentication.DataTransferObjects.Session;
+using FluentValidation;
 using Domain.Entities;
 
 namespace Application.Features.Authentication;
@@ -15,15 +16,21 @@ public sealed class AuthService(
     IRegistrationTokenService registrationTokenService,
     IEmailSender emailSender,
     TimeProvider timeProvider,
-    AuthOptions options) : IAuthService
+    AuthOptions options,
+    IValidator<RequestSignInCodeCommand> requestSignInCodeValidator,
+    IValidator<VerifySignInCodeCommand> verifySignInCodeValidator,
+    IValidator<CompleteRegistrationCommand> completeRegistrationValidator,
+    IValidator<RefreshSessionCommand> refreshSessionValidator) : IAuthService
 {
     public async Task<SignInCodeRequestResult> RequestSignInCodeAsync(RequestSignInCodeCommand command, CancellationToken cancellationToken = default)
     {
-        var email = NormalizeEmail(command.Email);
-        if (email is null)
+        var validation = await requestSignInCodeValidator.ValidateAsync(command, cancellationToken);
+        if (!validation.IsValid)
         {
-            return new(false, null, "Email manzili noto'g'ri.");
+            return new(false, null, validation.Errors[0].ErrorMessage);
         }
+
+        var email = NormalizeEmail(command.Email)!;
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var latestCode = await store.GetLatestActiveVerificationCodeAsync(email, VerificationCodePurpose.SignIn, now, cancellationToken);
@@ -68,11 +75,13 @@ public sealed class AuthService(
 
     public async Task<SignInVerificationResult> VerifySignInCodeAsync(VerifySignInCodeCommand command, CancellationToken cancellationToken = default)
     {
-        var email = NormalizeEmail(command.Email);
-        if (email is null || !IsSixDigitCode(command.Code))
+        var validation = await verifySignInCodeValidator.ValidateAsync(command, cancellationToken);
+        if (!validation.IsValid)
         {
-            return new(false, false, null, null, "Email yoki tasdiqlash kodi noto'g'ri.");
+            return new(false, false, null, null, validation.Errors[0].ErrorMessage);
         }
+
+        var email = NormalizeEmail(command.Email)!;
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var verification = await store.GetLatestActiveVerificationCodeAsync(email, VerificationCodePurpose.SignIn, now, cancellationToken);
@@ -108,6 +117,12 @@ public sealed class AuthService(
 
     public async Task<RegistrationResult> CompleteRegistrationAsync(CompleteRegistrationCommand command, CancellationToken cancellationToken = default)
     {
+        var validation = await completeRegistrationValidator.ValidateAsync(command, cancellationToken);
+        if (!validation.IsValid)
+        {
+            return new(false, null, validation.Errors[0].ErrorMessage);
+        }
+
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var email = registrationTokenService.Validate(command.RegistrationToken, now);
         if (email is null)
@@ -115,11 +130,7 @@ public sealed class AuthService(
             return new(false, null, "Ro'yxatdan o'tish havolasi yaroqsiz yoki muddati tugagan.");
         }
 
-        var username = NormalizeUsername(command.Username);
-        if (username is null || string.IsNullOrWhiteSpace(command.FirstName))
-        {
-            return new(false, null, "Ism yoki username noto'g'ri.");
-        }
+        var username = NormalizeUsername(command.Username)!;
 
         if (await store.FindUserByEmailAsync(email, cancellationToken) is not null || await store.UsernameExistsAsync(username, cancellationToken))
         {
@@ -144,7 +155,8 @@ public sealed class AuthService(
 
     public async Task<TokenPair?> RefreshSessionAsync(RefreshSessionCommand command, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(command.RefreshToken))
+        var validation = await refreshSessionValidator.ValidateAsync(command, cancellationToken);
+        if (!validation.IsValid)
         {
             return null;
         }
@@ -255,8 +267,6 @@ public sealed class AuthService(
 
         return normalized;
     }
-
-    private static bool IsSixDigitCode(string code) => code.Length == 6 && code.All(char.IsAsciiDigit);
 
     private static string CreateRefreshToken() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
 

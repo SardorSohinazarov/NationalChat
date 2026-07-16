@@ -36,6 +36,13 @@
 - Keep service registrations out of `Program.cs`.
 - Group service registrations in focused `IServiceCollection` extension methods under an `Extensions` folder.
 - Keep `Program.cs` limited to application bootstrap and middleware pipeline configuration.
+- Split registrations by responsibility into focused extension methods (for example: API transport, authentication, database, repositories, application services, security, and email). Keep the composition extension limited to invoking those groups.
+
+## Validation
+
+- Every DTO that enters the application through an API endpoint (body, query, or route-bound request DTO) must have a FluentValidation validator in the Application layer.
+- Validate use-case commands in their service before applying business rules. API-level FluentValidation is an additional transport safeguard, not a replacement for service-boundary validation.
+- Keep format, required-field, length, range, and shape checks in validators. Keep business rules such as uniqueness, ownership, rate limits, and state transitions in services or domain code.
 
 ## Layer Boundaries
 

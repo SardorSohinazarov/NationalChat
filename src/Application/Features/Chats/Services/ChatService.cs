@@ -2,6 +2,7 @@ using Application.Features.Chats.DataTransferObjects.Requests;
 using Application.Features.Chats.DataTransferObjects.Responses;
 using Application.Features.Chats.Factories;
 using Application.Features.Chats.Mappers;
+using Application.DataTransferObjects.Pagination;
 using Domain.Entities;
 using FluentValidation;
 
@@ -12,6 +13,12 @@ public sealed class ChatService(
     IValidator<CreatePrivateChatRequest> createPrivateChatValidator,
     TimeProvider timeProvider) : IChatService
 {
+    public Task<CursorPagedResponse<ChatListDto>> GetChatsAsync(
+        int currentUserId,
+        CursorPaginationRequest pagination,
+        CancellationToken cancellationToken = default) =>
+        repository.GetChatsAsync(currentUserId, pagination, cancellationToken);
+
     public async Task<PrivateChatDto?> FindOrCreatePrivateChatAsync(
         int currentUserId,
         CreatePrivateChatRequest request,

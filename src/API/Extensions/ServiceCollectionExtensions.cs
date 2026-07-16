@@ -5,6 +5,7 @@ using Application.Features.Contacts;
 using Application.Features.Profiles;
 using Application.Features.Chats;
 using Application.Features.Users;
+using Application.Features.Messages;
 using Infrastructure.Email;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Repositories;
@@ -88,6 +89,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IContactRepository, ContactRepository>();
         services.AddScoped<IChatRepository, ChatRepository>();
         services.AddScoped<IUserDiscoveryRepository, UserDiscoveryRepository>();
+        services.AddScoped<IMessageRepository, MessageRepository>();
         return services;
     }
 
@@ -129,6 +131,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IContactService, ContactService>();
         services.AddScoped<IChatService, ChatService>();
         services.AddScoped<IUserDiscoveryService, UserDiscoveryService>();
+        services.AddScoped<IMessageService, MessageService>();
         return services;
     }
 

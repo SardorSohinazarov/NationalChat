@@ -44,6 +44,12 @@
 - Validate use-case commands in their service before applying business rules. API-level FluentValidation is an additional transport safeguard, not a replacement for service-boundary validation.
 - Keep format, required-field, length, range, and shape checks in validators. Keep business rules such as uniqueness, ownership, rate limits, and state transitions in services or domain code.
 
+## Mapping and Entity Creation
+
+- Use feature-local static `Mapper` classes for entity-to-DTO mapping. Keep mapping out of controllers, services, and repositories except when an EF Core-translatable projection is required; place that projection on the mapper as an `Expression<Func<TEntity, TDto>>`.
+- Use feature-local static `Factory` classes to create new domain entities or aggregates from validated application inputs. Do not use factories for read-model/DTO mapping.
+- Keep mapper and factory classes in `Features/<FeatureName>/Mappers` and `Features/<FeatureName>/Factories` respectively.
+
 ## Layer Boundaries
 
 - Keep HTTP controllers, middleware configuration, and transport concerns in the API layer.

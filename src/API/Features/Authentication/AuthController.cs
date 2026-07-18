@@ -12,7 +12,7 @@ namespace API.Features.Authentication;
 
 [ApiController]
 [Route("api/auth")]
-public sealed class AuthController(IAuthService authService) : ControllerBase
+public sealed class AuthController(IAuthService authService, IWebHostEnvironment environment) : ControllerBase
 {
     private const string RefreshCookieName = "nationalchat_refresh";
 
@@ -168,7 +168,7 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         Response.Cookies.Append(RefreshCookieName, tokens.RefreshToken, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = !environment.IsDevelopment(),
             SameSite = SameSiteMode.Strict,
             Expires = new DateTimeOffset(tokens.RefreshTokenExpiresAt),
             Path = "/api/auth"
@@ -176,5 +176,5 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     }
 
     private void DeleteRefreshCookie() =>
-        Response.Cookies.Delete(RefreshCookieName, new CookieOptions { Path = "/api/auth", Secure = true, SameSite = SameSiteMode.Strict });
+        Response.Cookies.Delete(RefreshCookieName, new CookieOptions { Path = "/api/auth", Secure = !environment.IsDevelopment(), SameSite = SameSiteMode.Strict });
 }

@@ -49,6 +49,11 @@ public static class ServiceCollectionExtensions
 
     private static IServiceCollection AddApiTransport(this IServiceCollection services)
     {
+        services.AddCors(options => options.AddPolicy("Client", policy => policy
+            .WithOrigins("http://localhost:4200")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials()));
         services.AddControllers().AddJsonOptions(options =>
             options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull);
         services.AddFluentValidationAutoValidation();

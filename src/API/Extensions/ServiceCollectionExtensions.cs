@@ -1,4 +1,5 @@
 using API.DataTransferObjects.Responses;
+using API.Hubs;
 using Application.Features.Authentication;
 using Application.Features.Authentication.Validators;
 using Application.Features.Contacts;
@@ -37,6 +38,7 @@ public static class ServiceCollectionExtensions
         var smtpOptions = configuration.GetSection("Smtp").Get<SmtpOptions>() ?? new SmtpOptions();
         services
             .AddApiTransport()
+            .AddRealtimeMessaging()
             .AddApiDocumentation()
             .AddPersistence(configuration)
             .AddJwtAuthentication(jwtOptions)
@@ -69,6 +71,13 @@ public static class ServiceCollectionExtensions
             return new BadRequestObjectResult(Result.Fail(
                 string.IsNullOrWhiteSpace(message) ? "So'rov ma'lumotlari noto'g'ri." : message));
         });
+        return services;
+    }
+
+    private static IServiceCollection AddRealtimeMessaging(this IServiceCollection services)
+    {
+        services.AddSignalR();
+        services.AddSingleton<IChatRealtimeNotifier, SignalRChatRealtimeNotifier>();
         return services;
     }
 
@@ -111,6 +120,16 @@ public static class ServiceCollectionExtensions
             };
             options.Events = new JwtBearerEvents
             {
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+                    if (!string.IsNullOrWhiteSpace(accessToken) && context.HttpContext.Request.Path.StartsWithSegments("/hubs/chat"))
+                    {
+                        context.Token = accessToken;
+                    }
+
+                    return Task.CompletedTask;
+                },
                 OnChallenge = async context =>
                 {
                     context.HandleResponse();

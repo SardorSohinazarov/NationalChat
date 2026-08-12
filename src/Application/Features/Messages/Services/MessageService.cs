@@ -9,6 +9,7 @@ namespace Application.Features.Messages;
 
 public sealed class MessageService(
     IMessageRepository repository,
+    IChatRealtimeNotifier realtimeNotifier,
     IValidator<SendMessageRequest> sendMessageValidator,
     TimeProvider timeProvider) : IMessageService
 {
@@ -23,8 +24,10 @@ public sealed class MessageService(
             return null;
         }
 
-        var result = await repository.GetMessagesAsync(chatId, pagination, cancellationToken);
-        await repository.MarkAsReadAsync(chatId, currentUserId, result.Items.Select(x => x.Id).ToArray(), timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
+        var result = await repository.GetMessagesAsync(chatId, currentUserId, pagination, cancellationToken);
+        var messageIds = result.Items.Select(x => x.Id).ToArray();
+        await repository.MarkAsReadAsync(chatId, currentUserId, messageIds, timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
+        await realtimeNotifier.MessagesReadAsync(chatId, currentUserId, messageIds, await repository.GetMemberUserIdsAsync(chatId, cancellationToken), cancellationToken);
         return result;
     }
 
@@ -48,6 +51,9 @@ public sealed class MessageService(
         var message = MessageFactory.Create(chatId, currentUserId, request.TextContent, request.ReplyToMessageId, timeProvider.GetUtcNow().UtcDateTime);
         await repository.AddAsync(message, cancellationToken);
         await repository.SaveChangesAsync(cancellationToken);
-        return MessageMapper.ToDto((await repository.GetByIdAsync(message.Id, cancellationToken))!);
+        var messageDto = MessageMapper.ToDto((await repository.GetByIdAsync(message.Id, cancellationToken))!);
+        var memberUserIds = await repository.GetMemberUserIdsAsync(chatId, cancellationToken);
+        await realtimeNotifier.MessageCreatedAsync(messageDto, memberUserIds, cancellationToken);
+        return messageDto;
     }
 }

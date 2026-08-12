@@ -6,11 +6,13 @@ namespace Application.Features.Messages.Mappers;
 
 public static class MessageMapper
 {
-    public static Expression<Func<Message, MessageDto>> Projection => message =>
+    public static Expression<Func<Message, MessageDto>> Projection(int currentUserId) => message =>
         new(message.Id, message.ChatId, message.TextContent!, message.SentAt, message.ReplyToMessageId,
-            new MessageSenderDto(message.Sender.Id, message.Sender.Username, message.Sender.FirstName, message.Sender.LastName, message.Sender.ProfilePhotoId));
+            new MessageSenderDto(message.Sender.Id, message.Sender.Username, message.Sender.FirstName, message.Sender.LastName, message.Sender.ProfilePhotoId),
+            message.SenderId == currentUserId && message.Views.Any(view => view.UserId != currentUserId));
 
     public static MessageDto ToDto(Message message) =>
         new(message.Id, message.ChatId, message.TextContent!, message.SentAt, message.ReplyToMessageId,
-            new MessageSenderDto(message.Sender.Id, message.Sender.Username, message.Sender.FirstName, message.Sender.LastName, message.Sender.ProfilePhotoId));
+            new MessageSenderDto(message.Sender.Id, message.Sender.Username, message.Sender.FirstName, message.Sender.LastName, message.Sender.ProfilePhotoId),
+            false);
 }

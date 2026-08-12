@@ -8,4 +8,5 @@ public sealed record MessageDto(
     string TextContent,
     DateTime SentAt,
     int? ReplyToMessageId,
-    MessageSenderDto Sender);
+    MessageSenderDto Sender,
+    bool IsRead);

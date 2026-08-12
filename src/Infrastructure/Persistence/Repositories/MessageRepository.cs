@@ -16,15 +16,21 @@ public sealed class MessageRepository(ChatDb db) : IMessageRepository
     public Task<bool> ExistsInChatAsync(int messageId, int chatId, CancellationToken cancellationToken = default) =>
         db.Messages.AnyAsync(message => message.Id == messageId && message.ChatId == chatId, cancellationToken);
 
-    public Task<CursorPagedResponse<MessageDto>> GetMessagesAsync(int chatId, CursorPaginationRequest pagination, CancellationToken cancellationToken = default) =>
+    public Task<CursorPagedResponse<MessageDto>> GetMessagesAsync(int chatId, int currentUserId, CursorPaginationRequest pagination, CancellationToken cancellationToken = default) =>
         db.Messages.AsNoTracking()
             .Where(message => message.ChatId == chatId)
-            .ToCursorPagedResponseAsync(pagination, message => message.Id, MessageMapper.Projection, message => message.Id, cancellationToken);
+            .ToCursorPagedResponseAsync(pagination, message => message.Id, MessageMapper.Projection(currentUserId), message => message.Id, cancellationToken);
 
     public Task<Message?> GetByIdAsync(int messageId, CancellationToken cancellationToken = default) =>
         db.Messages.AsNoTracking()
             .Include(message => message.Sender)
             .FirstOrDefaultAsync(message => message.Id == messageId, cancellationToken);
+
+    public async Task<IReadOnlyCollection<int>> GetMemberUserIdsAsync(int chatId, CancellationToken cancellationToken = default) =>
+        await db.ChatMembers.AsNoTracking()
+            .Where(member => member.ChatId == chatId)
+            .Select(member => member.UserId)
+            .ToArrayAsync(cancellationToken);
 
     public Task AddAsync(Message message, CancellationToken cancellationToken = default) =>
         db.Messages.AddAsync(message, cancellationToken).AsTask();

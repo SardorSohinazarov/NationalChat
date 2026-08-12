@@ -7,13 +7,16 @@ using Application.Features.Profiles;
 using Application.Features.Chats;
 using Application.Features.Users;
 using Application.Features.Messages;
+using Application.Features.Media;
 using Infrastructure.Email;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Repositories;
 using Infrastructure.Security.Hashing;
 using Infrastructure.Security.Jwt;
 using Infrastructure.Security.Options;
+using Infrastructure.Security.Scanning;
 using Infrastructure.Security.Tokens;
+using Infrastructure.Storage;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -35,6 +38,7 @@ public static class ServiceCollectionExtensions
         var jwtOptions = configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
         var authOptions = configuration.GetSection("Auth").Get<AuthOptions>() ?? new AuthOptions();
         var authSecurityOptions = configuration.GetSection("AuthSecurity").Get<AuthSecurityOptions>() ?? new AuthSecurityOptions();
+        var antivirusOptions = configuration.GetSection("Antivirus").Get<AntivirusOptions>() ?? new AntivirusOptions();
         var smtpOptions = configuration.GetSection("Smtp").Get<SmtpOptions>() ?? new SmtpOptions();
         services
             .AddApiTransport()
@@ -42,8 +46,8 @@ public static class ServiceCollectionExtensions
             .AddApiDocumentation()
             .AddPersistence(configuration)
             .AddJwtAuthentication(jwtOptions)
-            .AddApplicationServices()
-            .AddSecurityServices(jwtOptions, authOptions, authSecurityOptions)
+            .AddApplicationServices(environment)
+            .AddSecurityServices(jwtOptions, authOptions, authSecurityOptions, antivirusOptions)
             .AddEmailServices(smtpOptions, environment);
 
         return services;
@@ -104,6 +108,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IChatRepository, ChatRepository>();
         services.AddScoped<IUserDiscoveryRepository, UserDiscoveryRepository>();
         services.AddScoped<IMessageRepository, MessageRepository>();
+        services.AddScoped<IImageAttachmentRepository, ImageAttachmentRepository>();
         return services;
     }
 
@@ -147,7 +152,7 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    private static IServiceCollection AddApplicationServices(this IServiceCollection services)
+    private static IServiceCollection AddApplicationServices(this IServiceCollection services, IWebHostEnvironment environment)
     {
         services.AddValidatorsFromAssemblyContaining<RequestSignInCodeCommandValidator>();
         services.AddScoped<IAuthService, AuthService>();
@@ -156,19 +161,24 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IChatService, ChatService>();
         services.AddScoped<IUserDiscoveryService, UserDiscoveryService>();
         services.AddScoped<IMessageService, MessageService>();
+        services.AddScoped<IImageAttachmentService, ImageAttachmentService>();
+        var webRootPath = environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot");
+        services.AddScoped<IImageStorage>(_ => new LocalImageStorage(webRootPath));
         return services;
     }
 
-    private static IServiceCollection AddSecurityServices(this IServiceCollection services, JwtOptions jwtOptions, AuthOptions authOptions, AuthSecurityOptions authSecurityOptions)
+    private static IServiceCollection AddSecurityServices(this IServiceCollection services, JwtOptions jwtOptions, AuthOptions authOptions, AuthSecurityOptions authSecurityOptions, AntivirusOptions antivirusOptions)
     {
         services.AddSingleton(jwtOptions);
         services.AddSingleton(authOptions);
         services.AddSingleton(authSecurityOptions);
+        services.AddSingleton(antivirusOptions);
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IOneTimeCodeHasher, Pbkdf2OneTimeCodeHasher>();
         services.AddSingleton<IRefreshTokenHasher, HmacRefreshTokenHasher>();
         services.AddSingleton<IRegistrationTokenService, HmacRegistrationTokenService>();
         services.AddSingleton<IAccessTokenIssuer, JwtAccessTokenIssuer>();
+        services.AddSingleton<IAntivirusScanner, ClamAvAntivirusScanner>();
         return services;
     }
 

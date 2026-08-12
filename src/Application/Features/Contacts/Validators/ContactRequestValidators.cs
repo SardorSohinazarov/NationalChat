@@ -1,4 +1,3 @@
-using Application.DataTransferObjects.Pagination;
 using Application.Features.Contacts.DataTransferObjects.Requests;
 using FluentValidation;
 
@@ -16,14 +15,5 @@ public sealed class AddContactRequestValidator : AbstractValidator<AddContactReq
             .MaximumLength(100).WithMessage("Kontakt ismi 100 belgidan oshmasligi kerak.");
         RuleFor(x => x.CustomLastName)
             .MaximumLength(100).WithMessage("Kontakt familiyasi 100 belgidan oshmasligi kerak.");
-    }
-}
-
-public sealed class CursorPaginationRequestValidator : AbstractValidator<CursorPaginationRequest>
-{
-    public CursorPaginationRequestValidator()
-    {
-        RuleFor(x => x.Limit).InclusiveBetween(1, 100);
-        RuleFor(x => x.BeforeId).GreaterThan(0).When(x => x.BeforeId.HasValue);
     }
 }

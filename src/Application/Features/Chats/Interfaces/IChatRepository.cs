@@ -7,8 +7,6 @@ namespace Application.Features.Chats;
 public interface IChatRepository
 {
     Task<User?> FindUserAsync(int userId, CancellationToken cancellationToken = default);
-    Task<Chat?> FindPrivateChatAsync(int firstUserId, int secondUserId, CancellationToken cancellationToken = default);
+    Task<Chat> FindOrCreatePrivateChatAsync(int firstUserId, int secondUserId, DateTime createdAt, CancellationToken cancellationToken = default);
     Task<CursorPagedResponse<ChatListDto>> GetChatsAsync(int userId, CursorPaginationRequest pagination, CancellationToken cancellationToken = default);
-    Task AddAsync(Chat chat, CancellationToken cancellationToken = default);
-    Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

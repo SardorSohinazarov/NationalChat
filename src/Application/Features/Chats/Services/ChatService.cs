@@ -1,6 +1,5 @@
 using Application.Features.Chats.DataTransferObjects.Requests;
 using Application.Features.Chats.DataTransferObjects.Responses;
-using Application.Features.Chats.Factories;
 using Application.Features.Chats.Mappers;
 using Application.DataTransferObjects.Pagination;
 using Domain.Entities;
@@ -36,16 +35,8 @@ public sealed class ChatService(
             return null;
         }
 
-        var chat = await repository.FindPrivateChatAsync(currentUserId, participant.Id, cancellationToken);
-        if (chat is not null)
-        {
-            return PrivateChatMapper.ToDto(chat, participant.Id);
-        }
-
         var now = timeProvider.GetUtcNow().UtcDateTime;
-        chat = PrivateChatFactory.Create(currentUserId, participant.Id, now);
-        await repository.AddAsync(chat, cancellationToken);
-        await repository.SaveChangesAsync(cancellationToken);
+        var chat = await repository.FindOrCreatePrivateChatAsync(currentUserId, participant.Id, now, cancellationToken);
         return PrivateChatMapper.ToDto(chat, participant);
     }
 }

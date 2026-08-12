@@ -246,6 +246,9 @@ namespace Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("Type")
                         .HasColumnType("integer")
                         .HasComment("1 = Private, 2 = Group, 3 = Channel, 4 = Secret");
@@ -487,6 +490,12 @@ namespace Infrastructure.Migrations
 
                     b.Property<int>("ChatId")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("EditedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int?>("ReplyToMessageId")
                         .HasColumnType("integer");
@@ -1244,7 +1253,8 @@ namespace Infrastructure.Migrations
 
                     b.HasOne("Domain.Entities.Message", "ReplyToMessage")
                         .WithMany()
-                        .HasForeignKey("ReplyToMessageId");
+                        .HasForeignKey("ReplyToMessageId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Domain.Entities.User", "Sender")
                         .WithMany("SentMessages")

@@ -43,8 +43,24 @@ public sealed class ChatRepository(ChatDb db) : IChatRepository
 
     public Task<CursorPagedResponse<ChatListDto>> GetChatsAsync(int userId, CursorPaginationRequest pagination, CancellationToken cancellationToken = default) =>
         db.Chats.AsNoTracking()
-            .Where(chat => chat.Members.Any(member => member.UserId == userId))
-            .ToCursorPagedResponseAsync(pagination, chat => chat.Id, ChatListMapper.Projection(userId), chat => chat.Id, cancellationToken);
+            // A chat becomes visible only after its first message.  The latest message ID is
+            // also the cursor and sort key, so an incoming message moves its chat to the top.
+            .Where(chat => chat.Members.Any(member => member.UserId == userId) && chat.Messages.Any())
+            .ToCursorPagedResponseAsync(
+                pagination,
+                chat => chat.Messages.Max(message => message.Id),
+                ChatListMapper.Projection(userId),
+                chat => chat.LastMessage!.Id,
+                cancellationToken);
+
+    public async Task<IReadOnlyCollection<int>?> SoftDeleteAsync(int chatId, int userId, DateTime deletedAt, CancellationToken cancellationToken = default)
+    {
+        var chat = await db.Chats.Include(chat => chat.Members).FirstOrDefaultAsync(chat => chat.Id == chatId && chat.Members.Any(member => member.UserId == userId), cancellationToken);
+        if (chat is null) return null;
+        chat.DeletedAt = deletedAt;
+        await db.SaveChangesAsync(cancellationToken);
+        return chat.Members.Select(member => member.UserId).ToArray();
+    }
 
     private Task<Chat?> FindPrivateChatAsync(int firstUserId, int secondUserId, CancellationToken cancellationToken) =>
         db.Chats

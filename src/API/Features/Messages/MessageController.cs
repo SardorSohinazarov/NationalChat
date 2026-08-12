@@ -44,5 +44,24 @@ public sealed class MessageController(IMessageService messageService) : Controll
             : Created($"api/chats/{chatId}/messages/{message.Id}", Result.Success(message));
     }
 
+    [HttpPut("{messageId:int}")]
+    public async Task<IActionResult> UpdateMessage(int chatId, int messageId, UpdateMessageRequest request, CancellationToken cancellationToken)
+    {
+        var message = await messageService.UpdateAsync(GetCurrentUserId(), chatId, messageId, request, cancellationToken);
+        return message is null ? BadRequest(Result.Fail("Xabarni tahrirlab bo'lmadi.")) : Ok(Result.Success(message));
+    }
+
+    [HttpDelete("{messageId:int}")]
+    public async Task<IActionResult> DeleteMessage(int chatId, int messageId, CancellationToken cancellationToken) =>
+        await messageService.DeleteAsync(GetCurrentUserId(), chatId, messageId, cancellationToken)
+            ? NoContent()
+            : BadRequest(Result.Fail("Xabarni o'chirib bo'lmadi."));
+
+    [HttpDelete]
+    public async Task<IActionResult> ClearChat(int chatId, CancellationToken cancellationToken) =>
+        await messageService.ClearChatAsync(GetCurrentUserId(), chatId, cancellationToken)
+            ? NoContent()
+            : BadRequest(Result.Fail("Chat tarixini tozalab bo'lmadi."));
+
     private int GetCurrentUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 }

@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(ChatDb))]
-    [Migration("20260715135611_Add-Auth-Tables")]
-    partial class AddAuthTables
+    [Migration("20260812132226_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -247,6 +247,9 @@ namespace Infrastructure.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("Type")
@@ -490,6 +493,12 @@ namespace Infrastructure.Migrations
 
                     b.Property<int>("ChatId")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("EditedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int?>("ReplyToMessageId")
                         .HasColumnType("integer");
@@ -1247,7 +1256,8 @@ namespace Infrastructure.Migrations
 
                     b.HasOne("Domain.Entities.Message", "ReplyToMessage")
                         .WithMany()
-                        .HasForeignKey("ReplyToMessageId");
+                        .HasForeignKey("ReplyToMessageId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Domain.Entities.User", "Sender")
                         .WithMany("SentMessages")

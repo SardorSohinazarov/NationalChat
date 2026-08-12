@@ -8,4 +8,5 @@ public interface IChatService
 {
     Task<CursorPagedResponse<ChatListDto>> GetChatsAsync(int currentUserId, CursorPaginationRequest pagination, CancellationToken cancellationToken = default);
     Task<PrivateChatDto?> FindOrCreatePrivateChatAsync(int currentUserId, CreatePrivateChatRequest request, CancellationToken cancellationToken = default);
+    Task<bool> DeleteAsync(int currentUserId, int chatId, CancellationToken cancellationToken = default);
 }

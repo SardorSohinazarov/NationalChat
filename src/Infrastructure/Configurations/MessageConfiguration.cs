@@ -14,6 +14,9 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
         builder.HasKey(x => x.Id);
         builder.Property(x => x.TextContent).HasColumnType("TEXT");
         builder.Property(x => x.SentAt).IsRequired();
+        builder.Property(x => x.EditedAt);
+        builder.Property(x => x.DeletedAt);
+        builder.HasQueryFilter(x => x.DeletedAt == null);
 
         builder.HasOne(x => x.Chat)
             .WithMany(x => x.Messages)
@@ -24,6 +27,11 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
             .WithMany(x => x.SentMessages)
             .HasForeignKey(x => x.SenderId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.ReplyToMessage)
+            .WithMany()
+            .HasForeignKey(x => x.ReplyToMessageId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasMany(x => x.Attachments)
             .WithOne(x => x.Message)

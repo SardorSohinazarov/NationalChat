@@ -8,6 +8,8 @@ public sealed class SignalRChatRealtimeNotifier(
     IHubContext<ChatHub> hubContext,
     ILogger<SignalRChatRealtimeNotifier> logger) : IChatRealtimeNotifier
 {
+    private Task PublishAsync(string eventName, object payload, IReadOnlyCollection<int> recipientUserIds, CancellationToken cancellationToken) =>
+        hubContext.Clients.Groups(recipientUserIds.Select(ChatHubGroups.User)).SendAsync(eventName, payload, cancellationToken);
     public async Task MessageCreatedAsync(
         MessageDto message,
         IReadOnlyCollection<int> recipientUserIds,
@@ -44,4 +46,8 @@ public sealed class SignalRChatRealtimeNotifier(
             logger.LogWarning(exception, "Could not publish read event for chat {ChatId}", chatId);
         }
     }
+    public Task MessageUpdatedAsync(MessageDto message, IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default) => PublishAsync("MessageUpdated", message, ids, cancellationToken);
+    public Task MessageDeletedAsync(int chatId, int messageId, IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default) => PublishAsync("MessageDeleted", new { chatId, messageId }, ids, cancellationToken);
+    public Task ChatClearedAsync(int chatId, IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default) => PublishAsync("ChatCleared", new { chatId }, ids, cancellationToken);
+    public Task ChatDeletedAsync(int chatId, IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default) => PublishAsync("ChatDeleted", new { chatId }, ids, cancellationToken);
 }

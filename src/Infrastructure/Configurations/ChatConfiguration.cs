@@ -15,6 +15,8 @@ public class ChatConfiguration : IEntityTypeConfiguration<Chat>
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Type).HasCommentFromEnum();
         builder.Property(x => x.CreatedAt).IsRequired();
+        builder.Property(x => x.DeletedAt);
+        builder.HasQueryFilter(x => x.DeletedAt == null);
 
         builder.HasMany(x => x.Messages)
             .WithOne(x => x.Chat)

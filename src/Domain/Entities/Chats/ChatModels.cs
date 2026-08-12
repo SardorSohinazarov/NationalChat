@@ -5,6 +5,7 @@ public class Chat
     public int Id { get; set; }
     public ChatType Type { get; set; }
     public DateTime CreatedAt { get; set; }
+    public DateTime? DeletedAt { get; set; }
 
     public ICollection<Message> Messages { get; set; } = new List<Message>();
     public ICollection<ChatMember> Members { get; set; } = new List<ChatMember>();

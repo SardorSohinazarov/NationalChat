@@ -11,6 +11,7 @@ public sealed class MessageService(
     IMessageRepository repository,
     IChatRealtimeNotifier realtimeNotifier,
     IValidator<SendMessageRequest> sendMessageValidator,
+    IValidator<UpdateMessageRequest> updateMessageValidator,
     IValidator<MessageSearchRequest> messageSearchValidator,
     TimeProvider timeProvider) : IMessageService
 {
@@ -71,5 +72,39 @@ public sealed class MessageService(
         var memberUserIds = await repository.GetMemberUserIdsAsync(chatId, cancellationToken);
         await realtimeNotifier.MessageCreatedAsync(messageDto, memberUserIds, cancellationToken);
         return messageDto;
+    }
+
+    public async Task<MessageDto?> UpdateAsync(int currentUserId, int chatId, int messageId, UpdateMessageRequest request, CancellationToken cancellationToken = default)
+    {
+        var validation = await updateMessageValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid) return null;
+
+        var message = await repository.GetOwnedMessageAsync(chatId, messageId, currentUserId, cancellationToken);
+        if (message is null) return null;
+        message.TextContent = request.TextContent.Trim();
+        message.EditedAt = timeProvider.GetUtcNow().UtcDateTime;
+        await repository.SaveChangesAsync(cancellationToken);
+        var dto = MessageMapper.ToDto((await repository.GetByIdAsync(message.Id, cancellationToken))!);
+        await realtimeNotifier.MessageUpdatedAsync(dto, await repository.GetMemberUserIdsAsync(chatId, cancellationToken), cancellationToken);
+        return dto;
+    }
+
+    public async Task<bool> DeleteAsync(int currentUserId, int chatId, int messageId, CancellationToken cancellationToken = default)
+    {
+        var message = await repository.GetOwnedMessageAsync(chatId, messageId, currentUserId, cancellationToken);
+        if (message is null) return false;
+        var memberIds = await repository.GetMemberUserIdsAsync(chatId, cancellationToken);
+        await repository.SoftDeleteAsync(message, timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
+        await realtimeNotifier.MessageDeletedAsync(chatId, messageId, memberIds, cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> ClearChatAsync(int currentUserId, int chatId, CancellationToken cancellationToken = default)
+    {
+        if (!await repository.IsChatMemberAsync(chatId, currentUserId, cancellationToken)) return false;
+        var memberIds = await repository.GetMemberUserIdsAsync(chatId, cancellationToken);
+        await repository.ClearChatAsync(chatId, timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
+        await realtimeNotifier.ChatClearedAsync(chatId, memberIds, cancellationToken);
+        return true;
     }
 }

@@ -28,13 +28,13 @@ namespace Infrastructure.Migrations
                 name: "chat");
 
             migrationBuilder.EnsureSchema(
+                name: "security");
+
+            migrationBuilder.EnsureSchema(
                 name: "storage");
 
             migrationBuilder.EnsureSchema(
                 name: "personal");
-
-            migrationBuilder.EnsureSchema(
-                name: "security");
 
             migrationBuilder.EnsureSchema(
                 name: "story");
@@ -47,11 +47,33 @@ namespace Infrastructure.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Type = table.Column<int>(type: "integer", nullable: false, comment: "1 = Private, 2 = Group, 3 = Channel, 4 = Secret"),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_chats", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "email_verification_codes",
+                schema: "security",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Email = table.Column<string>(type: "character varying(254)", maxLength: 254, nullable: false),
+                    CodeHash = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    Purpose = table.Column<int>(type: "integer", nullable: false),
+                    AttemptCount = table.Column<int>(type: "integer", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    ConsumedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    RequestIpAddress = table.Column<string>(type: "character varying(45)", maxLength: 45, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_email_verification_codes", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -127,12 +149,14 @@ namespace Infrastructure.Migrations
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Phone = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    Email = table.Column<string>(type: "character varying(254)", maxLength: 254, nullable: false),
                     Username = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     FirstName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     LastName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     Bio = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
-                    ProfilePhotoId = table.Column<int>(type: "integer", nullable: true)
+                    ProfilePhotoId = table.Column<int>(type: "integer", nullable: true),
+                    IsProfileCompleted = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -392,6 +416,8 @@ namespace Infrastructure.Migrations
                     SenderId = table.Column<int>(type: "integer", nullable: false),
                     TextContent = table.Column<string>(type: "TEXT", nullable: true),
                     SentAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    EditedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     ReplyToMessageId = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
@@ -409,7 +435,8 @@ namespace Infrastructure.Migrations
                         column: x => x.ReplyToMessageId,
                         principalSchema: "messaging",
                         principalTable: "messages",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "FK_messages_users_SenderId",
                         column: x => x.SenderId,
@@ -462,7 +489,12 @@ namespace Infrastructure.Migrations
                     SystemVersion = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     AppVersion = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     IpAddress = table.Column<string>(type: "character varying(45)", maxLength: 45, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    UserAgent = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
+                    RefreshTokenHash = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    LastActiveAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    RevokedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1004,6 +1036,12 @@ namespace Infrastructure.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_email_verification_codes_Email_Purpose_ExpiresAt",
+                schema: "security",
+                table: "email_verification_codes",
+                columns: new[] { "Email", "Purpose", "ExpiresAt" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_folder_chats_ChatId",
                 schema: "personal",
                 table: "folder_chats",
@@ -1136,10 +1174,17 @@ namespace Infrastructure.Migrations
                 column: "ParticipantId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_sessions_UserId",
+                name: "IX_sessions_RefreshTokenHash",
                 schema: "security",
                 table: "sessions",
-                column: "UserId");
+                column: "RefreshTokenHash",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_sessions_UserId_RevokedAt_ExpiresAt",
+                schema: "security",
+                table: "sessions",
+                columns: new[] { "UserId", "RevokedAt", "ExpiresAt" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_sticker_sets_CreatorId",
@@ -1196,10 +1241,24 @@ namespace Infrastructure.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_users_Email",
+                schema: "identity",
+                table: "users",
+                column: "Email",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_users_ProfilePhotoId",
                 schema: "identity",
                 table: "users",
                 column: "ProfilePhotoId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_users_Username",
+                schema: "identity",
+                table: "users",
+                column: "Username",
+                unique: true);
         }
 
         /// <inheritdoc />
@@ -1232,6 +1291,10 @@ namespace Infrastructure.Migrations
             migrationBuilder.DropTable(
                 name: "contacts",
                 schema: "identity");
+
+            migrationBuilder.DropTable(
+                name: "email_verification_codes",
+                schema: "security");
 
             migrationBuilder.DropTable(
                 name: "folder_chats",

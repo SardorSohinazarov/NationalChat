@@ -19,4 +19,8 @@ public interface IChatRealtimeNotifier
         IReadOnlyCollection<int> messageIds,
         IReadOnlyCollection<int> recipientUserIds,
         CancellationToken cancellationToken = default);
+    Task MessageUpdatedAsync(MessageDto message, IReadOnlyCollection<int> recipientUserIds, CancellationToken cancellationToken = default);
+    Task MessageDeletedAsync(int chatId, int messageId, IReadOnlyCollection<int> recipientUserIds, CancellationToken cancellationToken = default);
+    Task ChatClearedAsync(int chatId, IReadOnlyCollection<int> recipientUserIds, CancellationToken cancellationToken = default);
+    Task ChatDeletedAsync(int chatId, IReadOnlyCollection<int> recipientUserIds, CancellationToken cancellationToken = default);
 }

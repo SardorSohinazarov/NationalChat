@@ -9,6 +9,8 @@ public class Message
     public int SenderId { get; set; }
     public string? TextContent { get; set; }
     public DateTime SentAt { get; set; }
+    public DateTime? EditedAt { get; set; }
+    public DateTime? DeletedAt { get; set; }
     public int? ReplyToMessageId { get; set; }
 
     public Chat Chat { get; set; }

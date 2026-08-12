@@ -26,5 +26,11 @@ public sealed class ChatController(IChatService chatService) : ControllerBase
             : Ok(Result.Success(chat));
     }
 
+    [HttpDelete("{chatId:int}")]
+    public async Task<IActionResult> DeleteChat(int chatId, CancellationToken cancellationToken) =>
+        await chatService.DeleteAsync(GetCurrentUserId(), chatId, cancellationToken)
+            ? NoContent()
+            : BadRequest(Result.Fail("Chatni o'chirib bo'lmadi."));
+
     private int GetCurrentUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 }

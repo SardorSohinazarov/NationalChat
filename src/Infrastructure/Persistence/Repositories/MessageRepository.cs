@@ -46,7 +46,18 @@ public sealed class MessageRepository(ChatDb db) : IMessageRepository
     public Task<Message?> GetByIdAsync(int messageId, CancellationToken cancellationToken = default) =>
         db.Messages.AsNoTracking()
             .Include(message => message.Sender)
+            .Include(message => message.ReplyToMessage)
+            .ThenInclude(message => message!.Sender)
             .FirstOrDefaultAsync(message => message.Id == messageId, cancellationToken);
+
+    public Task<Message?> GetOwnedMessageAsync(int chatId, int messageId, int userId, CancellationToken cancellationToken = default) =>
+        db.Messages.Include(message => message.Sender)
+            .FirstOrDefaultAsync(message => message.Id == messageId && message.ChatId == chatId && message.SenderId == userId, cancellationToken);
+
+    public async Task SoftDeleteAsync(Message message, DateTime deletedAt, CancellationToken cancellationToken = default) { message.DeletedAt = deletedAt; await db.SaveChangesAsync(cancellationToken); }
+
+    public Task ClearChatAsync(int chatId, DateTime deletedAt, CancellationToken cancellationToken = default) =>
+        db.Messages.Where(message => message.ChatId == chatId).ExecuteUpdateAsync(x => x.SetProperty(message => message.DeletedAt, deletedAt), cancellationToken);
 
     public async Task<IReadOnlyCollection<int>> GetMemberUserIdsAsync(int chatId, CancellationToken cancellationToken = default) =>
         await db.ChatMembers.AsNoTracking()

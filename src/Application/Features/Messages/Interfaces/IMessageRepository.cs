@@ -9,6 +9,8 @@ public interface IMessageRepository
     Task<bool> IsChatMemberAsync(int chatId, int userId, CancellationToken cancellationToken = default);
     Task<bool> ExistsInChatAsync(int messageId, int chatId, CancellationToken cancellationToken = default);
     Task<CursorPagedResponse<MessageDto>> GetMessagesAsync(int chatId, int currentUserId, CursorPaginationRequest pagination, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<MessageDto>> SearchAsync(int chatId, int currentUserId, string query, int limit, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<MessageDto>> GetContextAsync(int chatId, int currentUserId, int messageId, CancellationToken cancellationToken = default);
     Task<Message?> GetByIdAsync(int messageId, CancellationToken cancellationToken = default);
     Task<IReadOnlyCollection<int>> GetMemberUserIdsAsync(int chatId, CancellationToken cancellationToken = default);
     Task AddAsync(Message message, CancellationToken cancellationToken = default);

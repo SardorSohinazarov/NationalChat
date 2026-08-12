@@ -21,6 +21,28 @@ public sealed class MessageRepository(ChatDb db) : IMessageRepository
             .Where(message => message.ChatId == chatId)
             .ToCursorPagedResponseAsync(pagination, message => message.Id, MessageMapper.Projection(currentUserId), message => message.Id, cancellationToken);
 
+    public async Task<IReadOnlyList<MessageDto>> SearchAsync(int chatId, int currentUserId, string query, int limit, CancellationToken cancellationToken = default) =>
+        await db.Messages.AsNoTracking()
+            .Where(message => message.ChatId == chatId && message.TextContent != null && EF.Functions.ILike(message.TextContent, $"%{query}%"))
+            .OrderByDescending(message => message.Id)
+            .Take(limit)
+            .Select(MessageMapper.Projection(currentUserId))
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<MessageDto>> GetContextAsync(int chatId, int currentUserId, int messageId, CancellationToken cancellationToken = default)
+    {
+        var older = await db.Messages.AsNoTracking()
+            .Where(message => message.ChatId == chatId && message.Id <= messageId)
+            .OrderByDescending(message => message.Id).Take(25)
+            .Select(MessageMapper.Projection(currentUserId)).ToListAsync(cancellationToken);
+        if (!older.Any(message => message.Id == messageId)) return [];
+        var newer = await db.Messages.AsNoTracking()
+            .Where(message => message.ChatId == chatId && message.Id > messageId)
+            .OrderBy(message => message.Id).Take(25)
+            .Select(MessageMapper.Projection(currentUserId)).ToListAsync(cancellationToken);
+        return older.Reverse<MessageDto>().Concat(newer).ToArray();
+    }
+
     public Task<Message?> GetByIdAsync(int messageId, CancellationToken cancellationToken = default) =>
         db.Messages.AsNoTracking()
             .Include(message => message.Sender)

@@ -11,6 +11,7 @@ public sealed class MessageService(
     IMessageRepository repository,
     IChatRealtimeNotifier realtimeNotifier,
     IValidator<SendMessageRequest> sendMessageValidator,
+    IValidator<MessageSearchRequest> messageSearchValidator,
     TimeProvider timeProvider) : IMessageService
 {
     public async Task<CursorPagedResponse<MessageDto>?> GetMessagesAsync(
@@ -29,6 +30,21 @@ public sealed class MessageService(
         await repository.MarkAsReadAsync(chatId, currentUserId, messageIds, timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
         await realtimeNotifier.MessagesReadAsync(chatId, currentUserId, messageIds, await repository.GetMemberUserIdsAsync(chatId, cancellationToken), cancellationToken);
         return result;
+    }
+
+    public async Task<IReadOnlyList<MessageDto>?> SearchAsync(
+        int currentUserId, int chatId, MessageSearchRequest request, CancellationToken cancellationToken = default)
+    {
+        var validation = await messageSearchValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid || !await repository.IsChatMemberAsync(chatId, currentUserId, cancellationToken)) return null;
+        return await repository.SearchAsync(chatId, currentUserId, request.Query.Trim(), request.Limit, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<MessageDto>?> GetContextAsync(
+        int currentUserId, int chatId, int messageId, CancellationToken cancellationToken = default)
+    {
+        if (messageId <= 0 || !await repository.IsChatMemberAsync(chatId, currentUserId, cancellationToken)) return null;
+        return await repository.GetContextAsync(chatId, currentUserId, messageId, cancellationToken);
     }
 
     public async Task<MessageDto?> SendAsync(

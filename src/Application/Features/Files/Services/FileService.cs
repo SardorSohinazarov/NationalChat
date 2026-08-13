@@ -14,7 +14,7 @@ public sealed class FileService(IFileStorage storage, IAntivirusScanner antiviru
         try
         {
             if (!await antivirusScanner.IsCleanAsync(request.Content, cancellationToken)) return new(null, "Rasm xavfsizlik tekshiruvidan o'tmadi.");
-            var stored = await storage.SaveImageAsync(request.FileName, request.Content, cancellationToken);
+            var stored = await storage.SaveImageAsync(request.FileName, request.Content, request.CropThumbnail, cancellationToken);
             return new(new StoredFile(stored.StoragePath, Path.GetFileName(request.FileName), stored.MimeType, request.Content.Length, stored.Width, stored.Height), null);
         }
         catch (InvalidOperationException exception)

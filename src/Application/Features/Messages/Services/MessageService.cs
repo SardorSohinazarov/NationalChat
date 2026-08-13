@@ -84,7 +84,7 @@ public sealed class MessageService(
         message.TextContent = request.TextContent.Trim();
         message.EditedAt = timeProvider.GetUtcNow().UtcDateTime;
         await repository.SaveChangesAsync(cancellationToken);
-        var dto = MessageMapper.ToDto((await repository.GetByIdAsync(message.Id, cancellationToken))!);
+        var dto = (await repository.GetDtoAsync(message.Id, currentUserId, cancellationToken))!;
         await realtimeNotifier.MessageUpdatedAsync(dto, await repository.GetMemberUserIdsAsync(chatId, cancellationToken), cancellationToken);
         return dto;
     }

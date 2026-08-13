@@ -1,5 +1,8 @@
+using Application.DataTransferObjects.Pagination;
 using Application.Features.Messages;
+using Application.Features.Messages.DataTransferObjects.Responses;
 using Domain.Entities;
+using Infrastructure.Persistence.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Persistence.Repositories;
@@ -19,4 +22,26 @@ public sealed class MessageAttachmentRepository(ChatDb db) : IMessageAttachmentR
     public Task<Message?> GetMessageAsync(int messageId, CancellationToken cancellationToken = default) => db.Messages.AsNoTracking().Include(message => message.Sender).Include(message => message.Attachments).ThenInclude(attachment => attachment.File).FirstOrDefaultAsync(message => message.Id == messageId, cancellationToken);
     public Task<Photo?> GetPhotoForMemberAsync(int fileId, int userId, CancellationToken cancellationToken = default) => db.Photos.AsNoTracking().Include(photo => photo.File).Where(photo => photo.FileId == fileId && photo.File.Attachments.Any(attachment => attachment.Message.Chat.Members.Any(member => member.UserId == userId))).FirstOrDefaultAsync(cancellationToken);
     public async Task<IReadOnlyCollection<int>> GetMemberUserIdsAsync(int chatId, CancellationToken cancellationToken = default) => await db.ChatMembers.Where(member => member.ChatId == chatId).Select(member => member.UserId).ToArrayAsync(cancellationToken);
+
+    public async Task<AttachmentSummaryDto> GetAttachmentSummaryAsync(int chatId, CancellationToken cancellationToken = default)
+    {
+        var counts = await db.Attachments.AsNoTracking()
+            .Where(attachment => attachment.Message.ChatId == chatId)
+            .GroupBy(attachment => attachment.Type)
+            .Select(group => new { group.Key, Count = group.Count() })
+            .ToListAsync(cancellationToken);
+
+        int CountOf(AttachmentType type) => counts.FirstOrDefault(count => count.Key == type)?.Count ?? 0;
+        return new(CountOf(AttachmentType.Photo), CountOf(AttachmentType.Video), CountOf(AttachmentType.File));
+    }
+
+    public Task<CursorPagedResponse<MessageAttachmentDto>> GetAttachmentsAsync(int chatId, AttachmentType type, CursorPaginationRequest pagination, CancellationToken cancellationToken = default) =>
+        db.Attachments.AsNoTracking()
+            .Where(attachment => attachment.Message.ChatId == chatId && attachment.Type == type)
+            .ToCursorPagedResponseAsync(pagination, attachment => attachment.FileId, attachment => new MessageAttachmentDto(
+                attachment.FileId, (int)attachment.Type, attachment.File.Name, attachment.File.MimeType, attachment.File.SizeBytes,
+                attachment.Type == AttachmentType.Photo ? db.Photos.Where(photo => photo.FileId == attachment.FileId).Select(photo => photo.Width).FirstOrDefault() : 0,
+                attachment.Type == AttachmentType.Photo ? db.Photos.Where(photo => photo.FileId == attachment.FileId).Select(photo => photo.Height).FirstOrDefault() : 0,
+                $"/api/media/images/{attachment.FileId}"),
+                dto => dto.Id, cancellationToken);
 }

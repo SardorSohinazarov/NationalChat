@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.ComponentModel;
-using Application.Features.Media;
+using Application.Features.Files;
 using Infrastructure.Security.Options;
 
 namespace Infrastructure.Security.Scanning;

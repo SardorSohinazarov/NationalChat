@@ -1,4 +1,4 @@
-namespace Application.Features.Media;
+namespace Application.Features.Files;
 
 public interface IAntivirusScanner
 {

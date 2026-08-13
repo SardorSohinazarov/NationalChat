@@ -1,6 +1,5 @@
 using System.Linq.Expressions;
 using Application.Features.Messages.DataTransferObjects.Responses;
-using Application.Features.Media.DataTransferObjects.Responses;
 using Domain.Entities;
 
 namespace Application.Features.Messages.Mappers;

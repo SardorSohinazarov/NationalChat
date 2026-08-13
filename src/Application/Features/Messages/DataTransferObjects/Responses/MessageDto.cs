@@ -1,5 +1,3 @@
-using Application.Features.Media.DataTransferObjects.Responses;
-
 namespace Application.Features.Messages.DataTransferObjects.Responses;
 
 public sealed record MessageSenderDto(int Id, string Username, string FirstName, string? LastName, int? ProfilePhotoId);

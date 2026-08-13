@@ -1,4 +1,4 @@
-using Application.Features.Media;
+using Application.Features.Files;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Formats.Jpeg;
@@ -7,11 +7,11 @@ using SixLabors.ImageSharp.Formats.Webp;
 
 namespace Infrastructure.Storage;
 
-public sealed class LocalImageStorage(string webRootPath) : IImageStorage
+public sealed class LocalImageStorage(string webRootPath) : IFileStorage
 {
     private readonly string rootPath = Path.Combine(webRootPath, "uploads", "images");
 
-    public async Task<StoredImage> SaveAsync(string fileName, string mimeType, byte[] content, CancellationToken cancellationToken = default)
+    public async Task<StoredFileContent> SaveImageAsync(string fileName, byte[] content, CancellationToken cancellationToken = default)
     {
         await using var source = new MemoryStream(content, writable: false);
         IImageFormat? detectedFormat = await Image.DetectFormatAsync(source, cancellationToken);
@@ -37,7 +37,7 @@ public sealed class LocalImageStorage(string webRootPath) : IImageStorage
         image.Metadata.XmpProfile = null;
         await image.SaveAsync(originalPath, GetEncoder(detectedFormat), cancellationToken);
 
-        return new StoredImage(originalRelativePath, GetMimeType(detectedFormat), image.Width, image.Height);
+        return new StoredFileContent(originalRelativePath, GetMimeType(detectedFormat), image.Width, image.Height);
     }
 
     public Task<Stream?> OpenReadAsync(string relativePath, CancellationToken cancellationToken = default)

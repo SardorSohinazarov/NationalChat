@@ -1,4 +1,4 @@
-namespace Application.Features.Media.DataTransferObjects.Responses;
+namespace Application.Features.Messages.DataTransferObjects.Responses;
 
 public sealed record MessageAttachmentDto(
     int Id,

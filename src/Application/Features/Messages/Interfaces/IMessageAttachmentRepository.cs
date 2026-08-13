@@ -1,8 +1,8 @@
 using Domain.Entities;
 
-namespace Application.Features.Media;
+namespace Application.Features.Messages;
 
-public interface IImageAttachmentRepository
+public interface IMessageAttachmentRepository
 {
     Task<bool> IsChatMemberAsync(int chatId, int userId, CancellationToken cancellationToken = default);
     Task<bool> MessageExistsInChatAsync(int messageId, int chatId, CancellationToken cancellationToken = default);

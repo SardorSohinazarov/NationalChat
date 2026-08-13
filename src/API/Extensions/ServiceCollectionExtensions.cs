@@ -7,7 +7,7 @@ using Application.Features.Profiles;
 using Application.Features.Chats;
 using Application.Features.Users;
 using Application.Features.Messages;
-using Application.Features.Media;
+using Application.Features.Files;
 using Infrastructure.Email;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Repositories;
@@ -108,7 +108,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IChatRepository, ChatRepository>();
         services.AddScoped<IUserDiscoveryRepository, UserDiscoveryRepository>();
         services.AddScoped<IMessageRepository, MessageRepository>();
-        services.AddScoped<IImageAttachmentRepository, ImageAttachmentRepository>();
+        services.AddScoped<IMessageAttachmentRepository, MessageAttachmentRepository>();
         return services;
     }
 
@@ -161,9 +161,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IChatService, ChatService>();
         services.AddScoped<IUserDiscoveryService, UserDiscoveryService>();
         services.AddScoped<IMessageService, MessageService>();
-        services.AddScoped<IImageAttachmentService, ImageAttachmentService>();
+        services.AddScoped<IMessageAttachmentService, MessageAttachmentService>();
+        services.AddScoped<IFileService, FileService>();
         var webRootPath = environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot");
-        services.AddScoped<IImageStorage>(_ => new LocalImageStorage(webRootPath));
+        services.AddScoped<IFileStorage>(_ => new LocalImageStorage(webRootPath));
         return services;
     }
 

@@ -41,7 +41,7 @@ public static class ServiceCollectionExtensions
         var antivirusOptions = configuration.GetSection("Antivirus").Get<AntivirusOptions>() ?? new AntivirusOptions();
         var smtpOptions = configuration.GetSection("Smtp").Get<SmtpOptions>() ?? new SmtpOptions();
         services
-            .AddApiTransport()
+            .AddApiTransport(configuration)
             .AddRealtimeMessaging()
             .AddApiDocumentation()
             .AddPersistence(configuration)
@@ -53,10 +53,14 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    private static IServiceCollection AddApiTransport(this IServiceCollection services)
+    private static IServiceCollection AddApiTransport(this IServiceCollection services, IConfiguration configuration)
     {
+        var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+        if (allowedOrigins is null || allowedOrigins.Length == 0)
+            throw new InvalidOperationException("Cors:AllowedOrigins konfiguratsiyasi belgilanmagan.");
+
         services.AddCors(options => options.AddPolicy("Client", policy => policy
-            .WithOrigins("http://localhost:4200")
+            .WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials()));

@@ -207,6 +207,9 @@ PublishScripts/
 *.nuget.targets
 appsettings.Local.json
 
+# Runtime-uploaded user media. Keep source control free of test/user files.
+src/API/wwwroot/uploads/
+
 # Microsoft Azure Build Output
 csx/
 *.build.csdef

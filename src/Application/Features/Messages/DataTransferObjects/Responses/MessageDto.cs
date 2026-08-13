@@ -12,4 +12,5 @@ public sealed record MessageDto(
     int? ReplyToMessageId,
     MessageReplyDto? ReplyToMessage,
     MessageSenderDto Sender,
-    bool IsRead);
+    bool IsRead,
+    IReadOnlyList<MessageAttachmentDto> Attachments);

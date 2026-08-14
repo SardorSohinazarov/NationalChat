@@ -15,8 +15,15 @@ public sealed class MessageAttachmentRepository(ChatDb db) : IMessageAttachmentR
         await db.Messages.AddAsync(message, cancellationToken);
         await db.Attachments.AddAsync(attachment, cancellationToken);
     }
+    public async Task AddFileMessageAsync(Message message, Domain.Entities.File file, Attachment attachment, CancellationToken cancellationToken = default)
+    {
+        await db.Set<Domain.Entities.File>().AddAsync(file, cancellationToken);
+        await db.Messages.AddAsync(message, cancellationToken);
+        await db.Attachments.AddAsync(attachment, cancellationToken);
+    }
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) => db.SaveChangesAsync(cancellationToken);
     public Task<Message?> GetMessageAsync(int messageId, CancellationToken cancellationToken = default) => db.Messages.AsNoTracking().Include(message => message.Sender).Include(message => message.Attachments).ThenInclude(attachment => attachment.File).FirstOrDefaultAsync(message => message.Id == messageId, cancellationToken);
     public Task<Photo?> GetPhotoForMemberAsync(int fileId, int userId, CancellationToken cancellationToken = default) => db.Photos.AsNoTracking().Include(photo => photo.File).Where(photo => photo.FileId == fileId && photo.File.Attachments.Any(attachment => attachment.Message.Chat.Members.Any(member => member.UserId == userId))).FirstOrDefaultAsync(cancellationToken);
+    public Task<Domain.Entities.File?> GetFileForMemberAsync(int fileId, int userId, CancellationToken cancellationToken = default) => db.Set<Domain.Entities.File>().AsNoTracking().Where(file => file.Id == fileId && file.Attachments.Any(attachment => attachment.Type == AttachmentType.File && attachment.Message.Chat.Members.Any(member => member.UserId == userId))).FirstOrDefaultAsync(cancellationToken);
     public async Task<IReadOnlyCollection<int>> GetMemberUserIdsAsync(int chatId, CancellationToken cancellationToken = default) => await db.ChatMembers.Where(member => member.ChatId == chatId).Select(member => member.UserId).ToArrayAsync(cancellationToken);
 }

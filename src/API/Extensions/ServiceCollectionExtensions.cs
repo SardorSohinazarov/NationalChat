@@ -169,6 +169,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IFileService, FileService>();
         var webRootPath = environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot");
         services.AddScoped<IFileStorage>(_ => new LocalImageStorage(webRootPath));
+        services.AddScoped<IGenericFileStorage>(_ => new LocalFileStorage(webRootPath));
         return services;
     }
 

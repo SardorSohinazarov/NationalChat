@@ -12,7 +12,7 @@ namespace Infrastructure.Persistence.Repositories;
 public sealed class ChatRepository(ChatDb db) : IChatRepository
 {
     public Task<User?> FindUserAsync(int userId, CancellationToken cancellationToken = default) =>
-        db.Users.AsNoTracking().FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
+        db.Users.AsNoTracking().Include(x => x.Sessions).FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
 
     public async Task<Chat> FindOrCreatePrivateChatAsync(
         int firstUserId,

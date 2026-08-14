@@ -8,9 +8,11 @@ using Application.Features.Chats;
 using Application.Features.Users;
 using Application.Features.Messages;
 using Application.Features.Files;
+using Application.Features.Presence;
 using Infrastructure.Email;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Repositories;
+using Infrastructure.Realtime;
 using Infrastructure.Security.Hashing;
 using Infrastructure.Security.Jwt;
 using Infrastructure.Security.Options;
@@ -86,6 +88,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddSignalR();
         services.AddSingleton<IChatRealtimeNotifier, SignalRChatRealtimeNotifier>();
+        services.AddSingleton<IPresenceTracker, InMemoryPresenceTracker>();
         return services;
     }
 

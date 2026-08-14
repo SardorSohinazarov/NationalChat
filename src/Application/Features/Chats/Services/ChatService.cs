@@ -2,6 +2,7 @@ using Application.Features.Chats.DataTransferObjects.Requests;
 using Application.Features.Chats.DataTransferObjects.Responses;
 using Application.Features.Chats.Mappers;
 using Application.Features.Messages;
+using Application.Features.Presence;
 using Application.DataTransferObjects.Pagination;
 using Domain.Entities;
 using FluentValidation;
@@ -11,14 +12,18 @@ namespace Application.Features.Chats;
 public sealed class ChatService(
     IChatRepository repository,
     IChatRealtimeNotifier realtimeNotifier,
+    IPresenceTracker presenceTracker,
     IValidator<CreatePrivateChatRequest> createPrivateChatValidator,
     TimeProvider timeProvider) : IChatService
 {
-    public Task<CursorPagedResponse<ChatListDto>> GetChatsAsync(
+    public async Task<CursorPagedResponse<ChatListDto>> GetChatsAsync(
         int currentUserId,
         CursorPaginationRequest pagination,
-        CancellationToken cancellationToken = default) =>
-        repository.GetChatsAsync(currentUserId, pagination, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        var response = await repository.GetChatsAsync(currentUserId, pagination, cancellationToken);
+        return response with { Items = response.Items.Select(WithLivePresence).ToList() };
+    }
 
     public async Task<PrivateChatDto?> FindOrCreatePrivateChatAsync(
         int currentUserId,
@@ -39,8 +44,17 @@ public sealed class ChatService(
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var chat = await repository.FindOrCreatePrivateChatAsync(currentUserId, participant.Id, now, cancellationToken);
-        return PrivateChatMapper.ToDto(chat, participant);
+        return WithLivePresence(PrivateChatMapper.ToDto(chat, participant));
     }
+
+    private ChatListDto WithLivePresence(ChatListDto dto) =>
+        dto.Participant is null ? dto : dto with { Participant = WithLivePresence(dto.Participant) };
+
+    private PrivateChatDto WithLivePresence(PrivateChatDto dto) =>
+        dto with { Participant = WithLivePresence(dto.Participant) };
+
+    private PrivateChatParticipantDto WithLivePresence(PrivateChatParticipantDto participant) =>
+        participant with { IsOnline = presenceTracker.IsOnline(participant.Id) };
 
     public async Task<bool> DeleteAsync(int currentUserId, int chatId, CancellationToken cancellationToken = default)
     {

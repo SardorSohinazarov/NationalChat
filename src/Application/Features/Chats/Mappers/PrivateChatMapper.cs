@@ -12,5 +12,8 @@ public static class PrivateChatMapper
     }
 
     public static PrivateChatDto ToDto(Chat chat, User participant) =>
-        new(chat.Id, chat.CreatedAt, new(participant.Id, participant.Username, participant.FirstName, participant.LastName, participant.ProfilePhotoId));
+        new(chat.Id, chat.CreatedAt, new(
+            participant.Id, participant.Username, participant.FirstName, participant.LastName, participant.ProfilePhotoId,
+            false,
+            participant.Sessions.Where(session => session.RevokedAt == null).Select(session => (DateTime?)session.LastActiveAt).Max()));
 }

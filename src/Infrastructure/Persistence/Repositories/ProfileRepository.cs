@@ -20,4 +20,11 @@ public sealed class ProfileRepository(ChatDb db) : BaseRepository<User>(db), IPr
         await Db.Set<Domain.Entities.File>().AddAsync(file, cancellationToken);
         await Db.Photos.AddAsync(photo, cancellationToken);
     }
+
+    public async Task<IReadOnlyCollection<int>> GetRelatedUserIdsAsync(int userId, CancellationToken cancellationToken) =>
+        await Db.ChatMembers.AsNoTracking()
+            .Where(member => member.UserId != userId && member.Chat.Members.Any(other => other.UserId == userId))
+            .Select(member => member.UserId)
+            .Distinct()
+            .ToArrayAsync(cancellationToken);
 }

@@ -11,7 +11,13 @@ namespace Infrastructure.Storage;
 public sealed class LocalImageStorage(string webRootPath) : IFileStorage
 {
     private const int ThumbnailSize = 256;
+    private static readonly HashSet<string> BlockedFileExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".exe", ".bat", ".cmd", ".sh", ".msi", ".dll", ".scr", ".com", ".ps1", ".vbs", ".vbe", ".js", ".jse", ".jar", ".app", ".apk", ".msix", ".cpl", ".gadget", ".lnk", ".reg"
+    };
     private readonly string rootPath = Path.Combine(webRootPath, "uploads", "images");
+    private readonly string filesRootPath = Path.Combine(webRootPath, "uploads", "files");
+    private readonly string uploadsRootPath = Path.Combine(webRootPath, "uploads");
 
     public async Task<StoredFileContent> SaveImageAsync(string fileName, byte[] content, bool cropThumbnail, CancellationToken cancellationToken = default)
     {
@@ -53,10 +59,29 @@ public sealed class LocalImageStorage(string webRootPath) : IFileStorage
         return new StoredFileContent(originalRelativePath, GetMimeType(detectedFormat), image.Width, image.Height);
     }
 
+    public async Task<StoredFileContent> SaveFileAsync(string fileName, string? declaredContentType, byte[] content, CancellationToken cancellationToken = default)
+    {
+        var extension = Path.GetExtension(fileName);
+        if (string.IsNullOrEmpty(extension) || BlockedFileExtensions.Contains(extension))
+            throw new InvalidOperationException("Ushbu turdagi fayl yuborish taqiqlangan.");
+
+        var id = Guid.NewGuid().ToString("N");
+        var dateDirectory = DateTime.UtcNow.ToString("yyyy/MM");
+        var directory = Path.Combine(filesRootPath, dateDirectory);
+        Directory.CreateDirectory(directory);
+
+        var relativePath = Path.Combine("uploads", "files", dateDirectory, $"{id}{extension}").Replace('\\', '/');
+        var fullPath = Path.Combine(webRootPath, relativePath);
+        await System.IO.File.WriteAllBytesAsync(fullPath, content, cancellationToken);
+
+        var mimeType = string.IsNullOrWhiteSpace(declaredContentType) ? "application/octet-stream" : declaredContentType;
+        return new StoredFileContent(relativePath, mimeType, 0, 0);
+    }
+
     public Task<Stream?> OpenReadAsync(string relativePath, CancellationToken cancellationToken = default)
     {
         var fullPath = Path.GetFullPath(Path.Combine(webRootPath, relativePath));
-        var safeRoot = Path.GetFullPath(rootPath);
+        var safeRoot = Path.GetFullPath(uploadsRootPath);
         if (!fullPath.StartsWith(safeRoot, StringComparison.OrdinalIgnoreCase) || !System.IO.File.Exists(fullPath))
             return Task.FromResult<Stream?>(null);
         return Task.FromResult<Stream?>(System.IO.File.OpenRead(fullPath));
@@ -72,7 +97,7 @@ public sealed class LocalImageStorage(string webRootPath) : IFileStorage
     private void DeleteIfExists(string relativePath)
     {
         var fullPath = Path.GetFullPath(Path.Combine(webRootPath, relativePath));
-        if (fullPath.StartsWith(Path.GetFullPath(rootPath), StringComparison.OrdinalIgnoreCase) && System.IO.File.Exists(fullPath))
+        if (fullPath.StartsWith(Path.GetFullPath(uploadsRootPath), StringComparison.OrdinalIgnoreCase) && System.IO.File.Exists(fullPath))
             System.IO.File.Delete(fullPath);
     }
 

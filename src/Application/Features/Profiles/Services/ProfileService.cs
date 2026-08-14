@@ -1,5 +1,6 @@
 using Application.Features.Files;
 using Application.Features.Files.DataTransferObjects.Requests;
+using Application.Features.Messages;
 using Application.Features.Profiles.DataTransferObjects.Requests;
 using Application.Features.Profiles.DataTransferObjects.Responses;
 using Application.Features.Profiles.Mappers;
@@ -8,7 +9,11 @@ using FluentValidation;
 
 namespace Application.Features.Profiles;
 
-public sealed class ProfileService(IProfileRepository store, IValidator<UpdateProfileRequest> updateProfileValidator, IFileService fileService) : IProfileService
+public sealed class ProfileService(
+    IProfileRepository store,
+    IValidator<UpdateProfileRequest> updateProfileValidator,
+    IFileService fileService,
+    IChatRealtimeNotifier realtimeNotifier) : IProfileService
 {
     public async Task<ProfileDto?> GetMyProfileAsync(int userId, CancellationToken cancellationToken = default)
     {
@@ -61,6 +66,9 @@ public sealed class ProfileService(IProfileRepository store, IValidator<UpdatePr
         await store.SaveChangesAsync(cancellationToken);
 
         if (oldFile is not null) await fileService.DeleteAsync(oldFile.StoragePath, cancellationToken);
+
+        var relatedUserIds = await store.GetRelatedUserIdsAsync(userId, cancellationToken);
+        await realtimeNotifier.ProfilePhotoUpdatedAsync(userId, user.ProfilePhotoId, relatedUserIds, cancellationToken);
 
         return new(ProfileMapper.ToDto(user), null);
     }

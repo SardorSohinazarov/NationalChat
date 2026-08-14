@@ -26,6 +26,25 @@ public sealed class MessageAttachmentController(IMessageAttachmentService messag
         return result.Message is null ? BadRequest(Result.Fail(result.Error ?? "Rasm yuborilmadi.")) : Created($"api/chats/{chatId}/messages/{result.Message.Id}", Result.Success(result.Message));
     }
 
+    [HttpPost("chats/{chatId:int}/attachments/files")]
+    [RequestSizeLimit(51 * 1024 * 1024)]
+    public async Task<IActionResult> UploadFile(int chatId, IFormFile? file, [FromForm] string? textContent, [FromForm] int? replyToMessageId, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0) return BadRequest(Result.Fail("Fayl tanlanmagan."));
+        await using var input = file.OpenReadStream();
+        using var content = new MemoryStream();
+        await input.CopyToAsync(content, cancellationToken);
+        var result = await messageAttachmentService.SendFileAsync(GetCurrentUserId(), chatId, new SendFileAttachmentRequest(file.FileName, file.ContentType, content.ToArray(), textContent, replyToMessageId), cancellationToken);
+        return result.Message is null ? BadRequest(Result.Fail(result.Error ?? "Fayl yuborilmadi.")) : Created($"api/chats/{chatId}/messages/{result.Message.Id}", Result.Success(result.Message));
+    }
+
+    [HttpGet("media/files/{fileId:int}")]
+    public async Task<IActionResult> GetFile(int fileId, CancellationToken cancellationToken)
+    {
+        var file = await messageAttachmentService.GetFileAsync(GetCurrentUserId(), fileId, cancellationToken);
+        return file is null ? NotFound(Result.Fail("Fayl topilmadi yoki unga kirish huquqi yo'q.")) : File(file.Content, file.MimeType, file.FileName, enableRangeProcessing: true);
+    }
+
     [HttpGet("media/images/{fileId:int}")]
     public async Task<IActionResult> GetImage(int fileId, CancellationToken cancellationToken)
     {

@@ -44,6 +44,43 @@ public sealed class MessageAttachmentService(
         }
     }
 
+    public async Task<MessageAttachmentResult> SendFileAsync(int currentUserId, int chatId, SendFileAttachmentRequest request, CancellationToken cancellationToken = default)
+    {
+        if (request.TextContent?.Length > 4_000) return new(null, "Xabar 4000 belgidan oshmasligi kerak.");
+        if (!await repository.IsChatMemberAsync(chatId, currentUserId, cancellationToken)) return new(null, "Bu chatga fayl yuborish huquqi yo'q.");
+        if (request.ReplyToMessageId.HasValue && !await repository.MessageExistsInChatAsync(request.ReplyToMessageId.Value, chatId, cancellationToken)) return new(null, "Javob yozilayotgan xabar topilmadi.");
+
+        var storedResult = await fileService.StoreFileAsync(new StoreFileRequest(request.FileName, request.DeclaredContentType, request.Content), cancellationToken);
+        if (storedResult.File is null) return new(null, storedResult.Error);
+        var stored = storedResult.File;
+
+        try
+        {
+            var file = new Domain.Entities.File { Name = stored.FileName, MimeType = stored.MimeType, SizeBytes = stored.SizeBytes, StoragePath = stored.StoragePath };
+            var message = new Message { ChatId = chatId, SenderId = currentUserId, TextContent = request.TextContent?.Trim() ?? string.Empty, ReplyToMessageId = request.ReplyToMessageId, SentAt = timeProvider.GetUtcNow().UtcDateTime };
+            var attachment = new Attachment { Message = message, File = file, Type = AttachmentType.File };
+            await repository.AddFileAsync(message, file, attachment, cancellationToken);
+            await repository.SaveChangesAsync(cancellationToken);
+            var persisted = await repository.GetMessageAsync(message.Id, cancellationToken) ?? throw new InvalidOperationException("Yuborilgan fayl topilmadi.");
+            var dto = MessageMapper.ToDto(persisted);
+            await realtimeNotifier.MessageCreatedAsync(dto, await repository.GetMemberUserIdsAsync(chatId, cancellationToken), cancellationToken);
+            return new(dto, null);
+        }
+        catch
+        {
+            await fileService.DeleteAsync(stored.StoragePath, cancellationToken);
+            throw;
+        }
+    }
+
+    public async Task<ProtectedAttachment?> GetFileAsync(int currentUserId, int fileId, CancellationToken cancellationToken = default)
+    {
+        var file = await repository.GetFileForMemberAsync(fileId, currentUserId, cancellationToken);
+        if (file is null) return null;
+        var stream = await fileService.OpenReadAsync(file.StoragePath, cancellationToken);
+        return stream is null ? null : new(stream, file.MimeType, file.Name);
+    }
+
     public async Task<ProtectedAttachment?> GetImageAsync(int currentUserId, int fileId, bool original = false, CancellationToken cancellationToken = default)
     {
         var photo = await repository.GetPhotoForMemberAsync(fileId, currentUserId, cancellationToken);

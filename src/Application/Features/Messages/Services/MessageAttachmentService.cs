@@ -1,3 +1,4 @@
+using Application.DataTransferObjects.Pagination;
 using Application.Features.Files;
 using Application.Features.Files.DataTransferObjects.Requests;
 using Application.Features.Messages.DataTransferObjects.Requests;
@@ -43,11 +44,30 @@ public sealed class MessageAttachmentService(
         }
     }
 
-    public async Task<ProtectedAttachment?> GetImageAsync(int currentUserId, int fileId, CancellationToken cancellationToken = default)
+    public async Task<ProtectedAttachment?> GetImageAsync(int currentUserId, int fileId, bool original = false, CancellationToken cancellationToken = default)
     {
         var photo = await repository.GetPhotoForMemberAsync(fileId, currentUserId, cancellationToken);
         if (photo?.File is null) return null;
+
+        if (!original)
+        {
+            var thumbnailStream = await fileService.OpenReadAsync(ThumbnailPaths.ForOriginal(photo.File.StoragePath), cancellationToken);
+            if (thumbnailStream is not null) return new(thumbnailStream, photo.File.MimeType, photo.File.Name);
+        }
+
         var stream = await fileService.OpenReadAsync(photo.File.StoragePath, cancellationToken);
         return stream is null ? null : new(stream, photo.File.MimeType, photo.File.Name);
+    }
+
+    public async Task<AttachmentSummaryDto?> GetAttachmentSummaryAsync(int currentUserId, int chatId, CancellationToken cancellationToken = default)
+    {
+        if (!await repository.IsChatMemberAsync(chatId, currentUserId, cancellationToken)) return null;
+        return await repository.GetAttachmentSummaryAsync(chatId, cancellationToken);
+    }
+
+    public async Task<CursorPagedResponse<MessageAttachmentDto>?> GetAttachmentsAsync(int currentUserId, int chatId, AttachmentType type, CursorPaginationRequest pagination, CancellationToken cancellationToken = default)
+    {
+        if (!await repository.IsChatMemberAsync(chatId, currentUserId, cancellationToken)) return null;
+        return await repository.GetAttachmentsAsync(chatId, type, pagination, cancellationToken);
     }
 }

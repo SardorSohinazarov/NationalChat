@@ -12,6 +12,7 @@ public interface IMessageRepository
     Task<IReadOnlyList<MessageDto>> SearchAsync(int chatId, int currentUserId, string query, int limit, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<MessageDto>> GetContextAsync(int chatId, int currentUserId, int messageId, CancellationToken cancellationToken = default);
     Task<Message?> GetByIdAsync(int messageId, CancellationToken cancellationToken = default);
+    Task<MessageDto?> GetDtoAsync(int messageId, int currentUserId, CancellationToken cancellationToken = default);
     Task<Message?> GetOwnedMessageAsync(int chatId, int messageId, int userId, CancellationToken cancellationToken = default);
     Task SoftDeleteAsync(Message message, DateTime deletedAt, CancellationToken cancellationToken = default);
     Task ClearChatAsync(int chatId, DateTime deletedAt, CancellationToken cancellationToken = default);

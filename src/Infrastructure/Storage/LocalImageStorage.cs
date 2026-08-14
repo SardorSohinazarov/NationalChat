@@ -4,14 +4,16 @@ using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Formats.Webp;
+using SixLabors.ImageSharp.Processing;
 
 namespace Infrastructure.Storage;
 
 public sealed class LocalImageStorage(string webRootPath) : IFileStorage
 {
+    private const int ThumbnailSize = 256;
     private readonly string rootPath = Path.Combine(webRootPath, "uploads", "images");
 
-    public async Task<StoredFileContent> SaveImageAsync(string fileName, byte[] content, CancellationToken cancellationToken = default)
+    public async Task<StoredFileContent> SaveImageAsync(string fileName, byte[] content, bool cropThumbnail, CancellationToken cancellationToken = default)
     {
         await using var source = new MemoryStream(content, writable: false);
         IImageFormat? detectedFormat = await Image.DetectFormatAsync(source, cancellationToken);
@@ -37,6 +39,17 @@ public sealed class LocalImageStorage(string webRootPath) : IFileStorage
         image.Metadata.XmpProfile = null;
         await image.SaveAsync(originalPath, GetEncoder(detectedFormat), cancellationToken);
 
+        if (image.Width > ThumbnailSize || image.Height > ThumbnailSize)
+        {
+            var thumbnailPath = Path.Combine(webRootPath, ThumbnailPaths.ForOriginal(originalRelativePath));
+            using var thumbnail = image.Clone(context => context.Resize(new ResizeOptions
+            {
+                Size = new Size(ThumbnailSize, ThumbnailSize),
+                Mode = cropThumbnail ? ResizeMode.Crop : ResizeMode.Max,
+            }));
+            await thumbnail.SaveAsync(thumbnailPath, GetEncoder(detectedFormat), cancellationToken);
+        }
+
         return new StoredFileContent(originalRelativePath, GetMimeType(detectedFormat), image.Width, image.Height);
     }
 
@@ -51,10 +64,16 @@ public sealed class LocalImageStorage(string webRootPath) : IFileStorage
 
     public Task DeleteAsync(string relativePath, CancellationToken cancellationToken = default)
     {
+        DeleteIfExists(relativePath);
+        DeleteIfExists(ThumbnailPaths.ForOriginal(relativePath));
+        return Task.CompletedTask;
+    }
+
+    private void DeleteIfExists(string relativePath)
+    {
         var fullPath = Path.GetFullPath(Path.Combine(webRootPath, relativePath));
         if (fullPath.StartsWith(Path.GetFullPath(rootPath), StringComparison.OrdinalIgnoreCase) && System.IO.File.Exists(fullPath))
             System.IO.File.Delete(fullPath);
-        return Task.CompletedTask;
     }
 
     private static bool IsSupported(IImageFormat format) => format is JpegFormat or PngFormat or WebpFormat;

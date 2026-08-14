@@ -1,3 +1,5 @@
+using Application.DataTransferObjects.Pagination;
+using Application.Features.Messages.DataTransferObjects.Responses;
 using Domain.Entities;
 
 namespace Application.Features.Messages;
@@ -11,4 +13,6 @@ public interface IMessageAttachmentRepository
     Task<Message?> GetMessageAsync(int messageId, CancellationToken cancellationToken = default);
     Task<Photo?> GetPhotoForMemberAsync(int fileId, int userId, CancellationToken cancellationToken = default);
     Task<IReadOnlyCollection<int>> GetMemberUserIdsAsync(int chatId, CancellationToken cancellationToken = default);
+    Task<AttachmentSummaryDto> GetAttachmentSummaryAsync(int chatId, CancellationToken cancellationToken = default);
+    Task<CursorPagedResponse<MessageAttachmentDto>> GetAttachmentsAsync(int chatId, AttachmentType type, CursorPaginationRequest pagination, CancellationToken cancellationToken = default);
 }

@@ -200,10 +200,40 @@ public sealed class AuthService(
         await store.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<ActiveSessionDto>> GetActiveSessionsAsync(int userId, CancellationToken cancellationToken = default)
+    public async Task<bool> RevokeSessionAsync(int userId, int sessionId, int currentSessionId, CancellationToken cancellationToken = default)
+    {
+        if (sessionId == currentSessionId)
+        {
+            return false;
+        }
+
+        var session = await store.FindSessionAsync(userId, sessionId, cancellationToken);
+        if (session is null || session.RevokedAt is not null)
+        {
+            return false;
+        }
+
+        session.RevokedAt = timeProvider.GetUtcNow().UtcDateTime;
+        await store.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task LogoutAllOthersAsync(int userId, int currentSessionId, CancellationToken cancellationToken = default)
+    {
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+        var sessions = await store.GetActiveSessionsAsync(userId, now, cancellationToken);
+        foreach (var session in sessions.Where(x => x.Id != currentSessionId))
+        {
+            session.RevokedAt = now;
+        }
+
+        await store.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ActiveSessionDto>> GetActiveSessionsAsync(int userId, int currentSessionId, CancellationToken cancellationToken = default)
     {
         var sessions = await store.GetActiveSessionsAsync(userId, timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
-        return sessions.Select(ActiveSessionMapper.ToDto).ToList();
+        return sessions.Select(session => ActiveSessionMapper.ToDto(session, currentSessionId)).ToList();
     }
 
     private async Task<TokenPair> CreateSessionAsync(User user, AuthSessionMetadata metadata, DateTime now, CancellationToken cancellationToken)

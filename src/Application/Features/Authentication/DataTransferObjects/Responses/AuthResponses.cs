@@ -21,4 +21,5 @@ public sealed record ActiveSessionDto(
     string IpAddress,
     DateTime CreatedAt,
     DateTime LastActiveAt,
-    DateTime ExpiresAt);
+    DateTime ExpiresAt,
+    bool IsCurrent);

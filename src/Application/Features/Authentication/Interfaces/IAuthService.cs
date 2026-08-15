@@ -11,5 +11,7 @@ public interface IAuthService
     Task<TokenPair?> RefreshSessionAsync(RefreshSessionCommand command, CancellationToken cancellationToken = default);
     Task LogoutAsync(int userId, int sessionId, CancellationToken cancellationToken = default);
     Task LogoutAllAsync(int userId, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<ActiveSessionDto>> GetActiveSessionsAsync(int userId, CancellationToken cancellationToken = default);
+    Task<bool> RevokeSessionAsync(int userId, int sessionId, int currentSessionId, CancellationToken cancellationToken = default);
+    Task LogoutAllOthersAsync(int userId, int currentSessionId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ActiveSessionDto>> GetActiveSessionsAsync(int userId, int currentSessionId, CancellationToken cancellationToken = default);
 }

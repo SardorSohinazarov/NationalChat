@@ -9,6 +9,7 @@ using Application.Features.Users;
 using Application.Features.Messages;
 using Application.Features.Files;
 using Application.Features.Presence;
+using Application.Features.Stories;
 using Infrastructure.Email;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Repositories;
@@ -129,6 +130,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUserDiscoveryRepository, UserDiscoveryRepository>();
         services.AddScoped<IMessageRepository, MessageRepository>();
         services.AddScoped<IMessageAttachmentRepository, MessageAttachmentRepository>();
+        services.AddScoped<IStoryRepository, StoryRepository>();
         return services;
     }
 
@@ -148,7 +150,12 @@ public static class ServiceCollectionExtensions
                 OnMessageReceived = context =>
                 {
                     var accessToken = context.Request.Query["access_token"];
-                    if (!string.IsNullOrWhiteSpace(accessToken) && context.HttpContext.Request.Path.StartsWithSegments("/hubs/chat"))
+                    var path = context.HttpContext.Request.Path;
+                    // <video>/<img> tags can't send an Authorization header, so the story media
+                    // stream (needs native HTTP range requests for playback/seeking) accepts the
+                    // token via query string too, same as the SignalR hub connection below.
+                    var isStoryMediaStream = path.StartsWithSegments("/api/stories") && path.Value!.EndsWith("/media");
+                    if (!string.IsNullOrWhiteSpace(accessToken) && (path.StartsWithSegments("/hubs/chat") || isStoryMediaStream))
                     {
                         context.Token = accessToken;
                     }
@@ -182,6 +189,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUserDiscoveryService, UserDiscoveryService>();
         services.AddScoped<IMessageService, MessageService>();
         services.AddScoped<IMessageAttachmentService, MessageAttachmentService>();
+        services.AddScoped<IStoryService, StoryService>();
         services.AddScoped<IFileService, FileService>();
         var webRootPath = environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot");
         services.AddScoped<IFileStorage>(_ => new LocalImageStorage(webRootPath));

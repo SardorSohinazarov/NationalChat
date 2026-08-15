@@ -26,6 +26,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using StackExchange.Redis;
 using System.Text.Json.Serialization;
 
 namespace API.Extensions;
@@ -44,7 +45,7 @@ public static class ServiceCollectionExtensions
         var smtpOptions = configuration.GetSection("Smtp").Get<SmtpOptions>() ?? new SmtpOptions();
         services
             .AddApiTransport(configuration)
-            .AddRealtimeMessaging()
+            .AddRealtimeMessaging(configuration, environment)
             .AddApiDocumentation()
             .AddPersistence(configuration)
             .AddJwtAuthentication(jwtOptions)
@@ -84,11 +85,23 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    private static IServiceCollection AddRealtimeMessaging(this IServiceCollection services)
+    private static IServiceCollection AddRealtimeMessaging(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)
     {
         services.AddSignalR();
         services.AddSingleton<IChatRealtimeNotifier, SignalRChatRealtimeNotifier>();
-        services.AddSingleton<IPresenceTracker, InMemoryPresenceTracker>();
+
+        if (environment.IsDevelopment()) // Development muhitida Redis o'rniga InMemoryPresenceTracker ishlatiladi
+        {
+            services.AddSingleton<IPresenceTracker, InMemoryPresenceTracker>();
+            return services;
+        }
+
+        var redisOptions = configuration.GetSection("Redis").Get<RedisOptions>() ?? new RedisOptions();
+        if (string.IsNullOrWhiteSpace(redisOptions.ConnectionString))
+            throw new InvalidOperationException("Redis:ConnectionString konfiguratsiyasi belgilanmagan.");
+
+        services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisOptions.ConnectionString));
+        services.AddSingleton<IPresenceTracker, RedisPresenceTracker>();
         return services;
     }
 

@@ -47,8 +47,8 @@ public sealed class MessageAttachmentRepository(ChatDb db) : IMessageAttachmentR
             .Where(attachment => attachment.Message.ChatId == chatId && attachment.Type == type)
             .ToCursorPagedResponseAsync(pagination, attachment => attachment.FileId, attachment => new MessageAttachmentDto(
                 attachment.FileId, (int)attachment.Type, attachment.File.Name, attachment.File.MimeType, attachment.File.SizeBytes,
-                attachment.Type == AttachmentType.Photo ? db.Photos.Where(photo => photo.FileId == attachment.FileId).Select(photo => photo.Width).FirstOrDefault() : 0,
-                attachment.Type == AttachmentType.Photo ? db.Photos.Where(photo => photo.FileId == attachment.FileId).Select(photo => photo.Height).FirstOrDefault() : 0,
-                attachment.Type == AttachmentType.File ? $"/api/media/files/{attachment.FileId}" : $"/api/media/images/{attachment.FileId}"),
+                attachment.Type == AttachmentType.Photo || attachment.Type == AttachmentType.Video ? db.Photos.Where(photo => photo.FileId == attachment.FileId).Select(photo => photo.Width).FirstOrDefault() : 0,
+                attachment.Type == AttachmentType.Photo || attachment.Type == AttachmentType.Video ? db.Photos.Where(photo => photo.FileId == attachment.FileId).Select(photo => photo.Height).FirstOrDefault() : 0,
+                attachment.Type == AttachmentType.File ? $"/api/media/files/{attachment.FileId}" : attachment.Type == AttachmentType.Video ? $"/api/media/videos/{attachment.FileId}" : $"/api/media/images/{attachment.FileId}"),
                 dto => dto.Id, cancellationToken);
 }

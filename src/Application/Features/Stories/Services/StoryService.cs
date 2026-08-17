@@ -51,6 +51,18 @@ public sealed class StoryService(
         return new StoryFeedDto(myStories, others);
     }
 
+    public async Task<IReadOnlyList<StoryDto>> GetUserStoriesAsync(int currentUserId, int userId, CancellationToken cancellationToken = default)
+    {
+        var stories = await repository.GetAllByUserAsync(userId, cancellationToken);
+        if (userId == currentUserId) return stories.Select(x => StoryMapper.ToDto(x, isViewedByMe: true)).ToList();
+
+        var storyIds = stories.Select(x => x.Id).ToArray();
+        var viewedIds = storyIds.Length == 0
+            ? new HashSet<int>()
+            : (HashSet<int>)await repository.GetViewedStoryIdsAsync(currentUserId, storyIds, cancellationToken);
+        return stories.Select(x => StoryMapper.ToDto(x, viewedIds.Contains(x.Id))).ToList();
+    }
+
     public async Task<StoryCreateResult> CreateAsync(int currentUserId, CreateStoryRequest request, CancellationToken cancellationToken = default)
     {
         var validation = await createStoryValidator.ValidateAsync(request, cancellationToken);
@@ -103,6 +115,14 @@ public sealed class StoryService(
         if (story?.File is null) return null;
         var stream = await fileService.OpenReadAsync(story.File.StoragePath, cancellationToken);
         return stream is null ? null : new(stream, story.File.MimeType, story.File.Name);
+    }
+
+    public async Task<ProtectedStoryMedia?> GetThumbnailAsync(int storyId, CancellationToken cancellationToken = default)
+    {
+        var story = await repository.GetStoryWithFileAsync(storyId, cancellationToken);
+        if (story?.File is null) return null;
+        var stream = await fileService.OpenReadAsync(ThumbnailPaths.ForOriginal(story.File.StoragePath, ".jpg"), cancellationToken);
+        return stream is null ? null : new(stream, "image/jpeg", story.File.Name);
     }
 
     public async Task<StoryDto?> ViewAsync(int currentUserId, int storyId, CancellationToken cancellationToken = default)

@@ -151,11 +151,12 @@ public static class ServiceCollectionExtensions
                 {
                     var accessToken = context.Request.Query["access_token"];
                     var path = context.HttpContext.Request.Path;
-                    // <video>/<img> tags can't send an Authorization header, so the story media
-                    // stream (needs native HTTP range requests for playback/seeking) accepts the
+                    // <video>/<img> tags can't send an Authorization header, so any media stream
+                    // that needs native HTTP range requests for playback/seeking accepts the
                     // token via query string too, same as the SignalR hub connection below.
                     var isStoryMediaStream = path.StartsWithSegments("/api/stories") && path.Value!.EndsWith("/media");
-                    if (!string.IsNullOrWhiteSpace(accessToken) && (path.StartsWithSegments("/hubs/chat") || isStoryMediaStream))
+                    var isVideoMediaStream = path.StartsWithSegments("/api/media/videos");
+                    if (!string.IsNullOrWhiteSpace(accessToken) && (path.StartsWithSegments("/hubs/chat") || isStoryMediaStream || isVideoMediaStream))
                     {
                         context.Token = accessToken;
                     }

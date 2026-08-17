@@ -1,4 +1,5 @@
 using Application.Features.Files;
+using Infrastructure.Video;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Formats.Jpeg;
@@ -75,7 +76,15 @@ public sealed class LocalImageStorage(string webRootPath) : IFileStorage
         await System.IO.File.WriteAllBytesAsync(fullPath, content, cancellationToken);
 
         var mimeType = string.IsNullOrWhiteSpace(declaredContentType) ? "application/octet-stream" : declaredContentType;
-        return new StoredFileContent(relativePath, mimeType, 0, 0);
+        if (!mimeType.StartsWith("video/", StringComparison.OrdinalIgnoreCase))
+            return new StoredFileContent(relativePath, mimeType, 0, 0);
+
+        var probe = await FfmpegVideoProbe.ProbeAsync(fullPath, cancellationToken);
+        if (probe is null) return new StoredFileContent(relativePath, mimeType, 0, 0);
+
+        var thumbnailFullPath = Path.Combine(webRootPath, ThumbnailPaths.ForOriginal(relativePath, ".jpg"));
+        await FfmpegVideoProbe.ExtractPosterFrameAsync(fullPath, thumbnailFullPath, probe.DurationSeconds, cancellationToken);
+        return new StoredFileContent(relativePath, mimeType, probe.Width, probe.Height);
     }
 
     public Task<Stream?> OpenReadAsync(string relativePath, CancellationToken cancellationToken = default)
@@ -91,6 +100,7 @@ public sealed class LocalImageStorage(string webRootPath) : IFileStorage
     {
         DeleteIfExists(relativePath);
         DeleteIfExists(ThumbnailPaths.ForOriginal(relativePath));
+        DeleteIfExists(ThumbnailPaths.ForOriginal(relativePath, ".jpg"));
         return Task.CompletedTask;
     }
 

@@ -7,6 +7,7 @@ namespace Application.Features.Stories;
 public interface IStoryRepository : IBaseRepository<Story>
 {
     Task<IReadOnlyList<Story>> GetActiveStoriesAsync(DateTime now, CancellationToken cancellationToken);
+    Task<IReadOnlyList<Story>> GetAllByUserAsync(int userId, CancellationToken cancellationToken);
     Task<IReadOnlySet<int>> GetViewedStoryIdsAsync(int viewerUserId, IReadOnlyCollection<int> storyIds, CancellationToken cancellationToken);
     Task<Story?> GetActiveStoryAsync(int storyId, DateTime now, CancellationToken cancellationToken);
     Task<Story?> GetOwnedStoryAsync(int storyId, int userId, CancellationToken cancellationToken);

@@ -19,6 +19,13 @@ public sealed class StoryController(IStoryService storyService) : ControllerBase
         return Ok(Result.Success(feed));
     }
 
+    [HttpGet("user/{userId:int}")]
+    public async Task<IActionResult> GetUserStories(int userId, CancellationToken cancellationToken)
+    {
+        var stories = await storyService.GetUserStoriesAsync(GetCurrentUserId(), userId, cancellationToken);
+        return Ok(Result.Success(stories));
+    }
+
     [HttpPost]
     [RequestSizeLimit(51 * 1024 * 1024)]
     public async Task<IActionResult> Create(IFormFile? media, [FromForm] string? caption, CancellationToken cancellationToken)
@@ -38,6 +45,13 @@ public sealed class StoryController(IStoryService storyService) : ControllerBase
     {
         var media = await storyService.GetMediaAsync(storyId, cancellationToken);
         return media is null ? NotFound(Result.Fail("Hikoya topilmadi.")) : File(media.Content, media.MimeType, enableRangeProcessing: true);
+    }
+
+    [HttpGet("{storyId:int}/media/thumbnail")]
+    public async Task<IActionResult> GetThumbnail(int storyId, CancellationToken cancellationToken)
+    {
+        var thumbnail = await storyService.GetThumbnailAsync(storyId, cancellationToken);
+        return thumbnail is null ? NotFound(Result.Fail("Eskiz mavjud emas.")) : File(thumbnail.Content, thumbnail.MimeType);
     }
 
     [HttpPost("{storyId:int}/view")]

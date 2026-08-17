@@ -15,6 +15,13 @@ public sealed class StoryRepository(ChatDb db) : BaseRepository<Story>(db), ISto
             .OrderByDescending(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Story>> GetAllByUserAsync(int userId, CancellationToken cancellationToken) =>
+        await Db.Stories.AsNoTracking()
+            .Include(x => x.User)
+            .Where(x => x.UserId == userId)
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlySet<int>> GetViewedStoryIdsAsync(int viewerUserId, IReadOnlyCollection<int> storyIds, CancellationToken cancellationToken)
     {
         var ids = await Db.StoryViews.AsNoTracking()

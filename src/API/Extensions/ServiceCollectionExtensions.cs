@@ -59,12 +59,8 @@ public static class ServiceCollectionExtensions
 
     private static IServiceCollection AddApiTransport(this IServiceCollection services, IConfiguration configuration)
     {
-        var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
-        if (allowedOrigins is null || allowedOrigins.Length == 0)
-            throw new InvalidOperationException("Cors:AllowedOrigins konfiguratsiyasi belgilanmagan.");
-
         services.AddCors(options => options.AddPolicy("Client", policy => policy
-            .WithOrigins(allowedOrigins)
+            .SetIsOriginAllowed(_ => true)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials()));
@@ -91,12 +87,11 @@ public static class ServiceCollectionExtensions
         services.AddSignalR();
         services.AddSingleton<IChatRealtimeNotifier, SignalRChatRealtimeNotifier>();
 
-        if (environment.IsDevelopment()) // Development muhitida Redis o'rniga InMemoryPresenceTracker ishlatiladi
-        {
-            services.AddSingleton<IPresenceTracker, InMemoryPresenceTracker>();
-            return services;
-        }
+        // Redis hali production'da ulanmagani uchun hozircha barcha muhitda InMemoryPresenceTracker ishlatiladi.
+        services.AddSingleton<IPresenceTracker, InMemoryPresenceTracker>();
+        return services;
 
+        /*
         var redisOptions = configuration.GetSection("Redis").Get<RedisOptions>() ?? new RedisOptions();
         if (string.IsNullOrWhiteSpace(redisOptions.ConnectionString))
             throw new InvalidOperationException("Redis:ConnectionString konfiguratsiyasi belgilanmagan.");
@@ -104,6 +99,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisOptions.ConnectionString));
         services.AddSingleton<IPresenceTracker, RedisPresenceTracker>();
         return services;
+        */
     }
 
     private static IServiceCollection AddApiDocumentation(this IServiceCollection services)

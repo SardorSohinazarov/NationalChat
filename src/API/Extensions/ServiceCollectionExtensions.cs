@@ -11,6 +11,7 @@ using Application.Features.Files;
 using Infrastructure.Email;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Repositories;
+using Infrastructure.Security.Google;
 using Infrastructure.Security.Hashing;
 using Infrastructure.Security.Jwt;
 using Infrastructure.Security.Options;
@@ -38,6 +39,7 @@ public static class ServiceCollectionExtensions
         var jwtOptions = configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
         var authOptions = configuration.GetSection("Auth").Get<AuthOptions>() ?? new AuthOptions();
         var authSecurityOptions = configuration.GetSection("AuthSecurity").Get<AuthSecurityOptions>() ?? new AuthSecurityOptions();
+        var googleAuthOptions = configuration.GetSection("GoogleAuth").Get<GoogleAuthOptions>() ?? new GoogleAuthOptions();
         var antivirusOptions = configuration.GetSection("Antivirus").Get<AntivirusOptions>() ?? new AntivirusOptions();
         var smtpOptions = configuration.GetSection("Smtp").Get<SmtpOptions>() ?? new SmtpOptions();
         services
@@ -47,7 +49,7 @@ public static class ServiceCollectionExtensions
             .AddPersistence(configuration)
             .AddJwtAuthentication(jwtOptions)
             .AddApplicationServices(environment)
-            .AddSecurityServices(jwtOptions, authOptions, authSecurityOptions, antivirusOptions)
+            .AddSecurityServices(jwtOptions, authOptions, authSecurityOptions, googleAuthOptions, antivirusOptions)
             .AddEmailServices(smtpOptions, environment);
 
         return services;
@@ -172,17 +174,19 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    private static IServiceCollection AddSecurityServices(this IServiceCollection services, JwtOptions jwtOptions, AuthOptions authOptions, AuthSecurityOptions authSecurityOptions, AntivirusOptions antivirusOptions)
+    private static IServiceCollection AddSecurityServices(this IServiceCollection services, JwtOptions jwtOptions, AuthOptions authOptions, AuthSecurityOptions authSecurityOptions, GoogleAuthOptions googleAuthOptions, AntivirusOptions antivirusOptions)
     {
         services.AddSingleton(jwtOptions);
         services.AddSingleton(authOptions);
         services.AddSingleton(authSecurityOptions);
+        services.AddSingleton(googleAuthOptions);
         services.AddSingleton(antivirusOptions);
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IOneTimeCodeHasher, Pbkdf2OneTimeCodeHasher>();
         services.AddSingleton<IRefreshTokenHasher, HmacRefreshTokenHasher>();
         services.AddSingleton<IRegistrationTokenService, HmacRegistrationTokenService>();
         services.AddSingleton<IAccessTokenIssuer, JwtAccessTokenIssuer>();
+        services.AddSingleton<IGoogleTokenValidator, GoogleTokenValidator>();
         services.AddSingleton<IAntivirusScanner, ClamAvAntivirusScanner>();
         return services;
     }
@@ -190,18 +194,26 @@ public static class ServiceCollectionExtensions
     private static IServiceCollection AddEmailServices(this IServiceCollection services, SmtpOptions smtpOptions, IWebHostEnvironment environment)
     {
         services.AddSingleton(smtpOptions);
-        if (environment.IsDevelopment() && string.IsNullOrWhiteSpace(smtpOptions.Host))
+        services.AddSingleton<DevelopmentEmailSender>();
+
+        if (string.IsNullOrWhiteSpace(smtpOptions.Host))
         {
-            services.AddSingleton<IEmailSender, DevelopmentEmailSender>();
+            if (!environment.IsDevelopment())
+            {
+                throw new InvalidOperationException("Smtp:Host va Smtp:FromAddress sozlanishi kerak.");
+            }
+
+            services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<DevelopmentEmailSender>());
             return services;
         }
 
-        if (string.IsNullOrWhiteSpace(smtpOptions.Host) || string.IsNullOrWhiteSpace(smtpOptions.FromAddress))
+        if (string.IsNullOrWhiteSpace(smtpOptions.FromAddress))
         {
             throw new InvalidOperationException("Smtp:Host va Smtp:FromAddress sozlanishi kerak.");
         }
 
-        services.AddSingleton<IEmailSender, SmtpEmailSender>();
+        services.AddSingleton<SmtpEmailSender>();
+        services.AddSingleton<IEmailSender, CompositeEmailSender>();
         return services;
     }
 }

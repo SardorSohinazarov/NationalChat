@@ -7,6 +7,7 @@ public interface IAuthService
 {
     Task<SignInCodeRequestResult> RequestSignInCodeAsync(RequestSignInCodeCommand command, CancellationToken cancellationToken = default);
     Task<SignInVerificationResult> VerifySignInCodeAsync(VerifySignInCodeCommand command, CancellationToken cancellationToken = default);
+    Task<SignInVerificationResult> SignInWithGoogleAsync(GoogleSignInCommand command, CancellationToken cancellationToken = default);
     Task<RegistrationResult> CompleteRegistrationAsync(CompleteRegistrationCommand command, CancellationToken cancellationToken = default);
     Task<TokenPair?> RefreshSessionAsync(RefreshSessionCommand command, CancellationToken cancellationToken = default);
     Task LogoutAsync(int userId, int sessionId, CancellationToken cancellationToken = default);

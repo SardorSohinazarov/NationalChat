@@ -57,6 +57,31 @@ public sealed class AuthController(IAuthService authService, IWebHostEnvironment
         }));
     }
 
+    [HttpPost("google")]
+    public async Task<IActionResult> GoogleSignIn(GoogleSignInRequest request, CancellationToken cancellationToken)
+    {
+        var result = await authService.SignInWithGoogleAsync(
+            new GoogleSignInCommand(request.IdToken, GetSessionMetadata(request.DeviceName, request.SystemVersion, request.AppVersion)),
+            cancellationToken);
+
+        if (!result.IsSuccessful)
+        {
+            return BadRequest(Result.Fail(result.Error));
+        }
+
+        if (result.RegistrationRequired)
+        {
+            return Ok(Result.Success(new { registrationRequired = true, registrationToken = result.RegistrationToken }));
+        }
+
+        WriteRefreshCookie(result.Tokens!);
+        return Ok(Result.Success(new
+        {
+            accessToken = result.Tokens!.AccessToken,
+            accessTokenExpiresAt = result.Tokens.AccessTokenExpiresAt
+        }));
+    }
+
     [HttpPost("register")]
     public async Task<IActionResult> Register(RegisterRequest request, CancellationToken cancellationToken)
     {

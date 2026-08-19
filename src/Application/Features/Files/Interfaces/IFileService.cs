@@ -6,6 +6,7 @@ namespace Application.Features.Files;
 public interface IFileService
 {
     Task<FileStoreResult> StoreImageAsync(StoreImageRequest request, CancellationToken cancellationToken = default);
+    Task<FileStoreResult> StoreFileAsync(StoreFileRequest request, CancellationToken cancellationToken = default);
     Task<Stream?> OpenReadAsync(string storagePath, CancellationToken cancellationToken = default);
     Task DeleteAsync(string storagePath, CancellationToken cancellationToken = default);
 }

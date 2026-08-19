@@ -50,4 +50,6 @@ public sealed class SignalRChatRealtimeNotifier(
     public Task MessageDeletedAsync(int chatId, int messageId, IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default) => PublishAsync("MessageDeleted", new { chatId, messageId }, ids, cancellationToken);
     public Task ChatClearedAsync(int chatId, IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default) => PublishAsync("ChatCleared", new { chatId }, ids, cancellationToken);
     public Task ChatDeletedAsync(int chatId, IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default) => PublishAsync("ChatDeleted", new { chatId }, ids, cancellationToken);
+    public Task ProfilePhotoUpdatedAsync(int userId, int? profilePhotoId, IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default) => PublishAsync("ProfilePhotoUpdated", new { userId, profilePhotoId }, ids, cancellationToken);
+    public Task UserPresenceChangedAsync(int userId, bool isOnline, DateTime? lastSeenAt, IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default) => PublishAsync("UserPresenceChanged", new { userId, isOnline, lastSeenAt }, ids, cancellationToken);
 }

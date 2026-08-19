@@ -13,7 +13,10 @@ public static class ChatListMapper
             chat.CreatedAt,
             chat.Type == ChatType.Private
                 ? chat.Members.Where(member => member.UserId != currentUserId)
-                    .Select(member => new PrivateChatParticipantDto(member.User.Id, member.User.Username, member.User.FirstName, member.User.LastName, member.User.ProfilePhotoId))
+                    .Select(member => new PrivateChatParticipantDto(
+                        member.User.Id, member.User.Username, member.User.FirstName, member.User.LastName, member.User.ProfilePhotoId,
+                        false,
+                        member.User.Sessions.Where(session => session.RevokedAt == null).Select(session => (DateTime?)session.LastActiveAt).Max()))
                     .FirstOrDefault()
                 : null,
             chat.Messages.OrderByDescending(message => message.Id)

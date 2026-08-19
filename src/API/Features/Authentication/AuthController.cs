@@ -159,13 +159,43 @@ public sealed class AuthController(IAuthService authService, IWebHostEnvironment
     [HttpGet("sessions")]
     public async Task<IActionResult> GetSessions(CancellationToken cancellationToken)
     {
-        var userId = GetCurrentUserId();
-        if (userId is null)
+        if (!TryGetCurrentSession(out var userId, out var sessionId))
         {
-            return Unauthorized(Result.Fail("User aniqlanmadi"));
+            return Unauthorized(Result.Fail("Session yaroqsiz"));
         }
 
-        return Ok(Result.Success(await authService.GetActiveSessionsAsync(userId.Value, cancellationToken)));
+        return Ok(Result.Success(await authService.GetActiveSessionsAsync(userId, sessionId, cancellationToken)));
+    }
+
+    [Authorize]
+    [HttpDelete("sessions/{id:int}")]
+    public async Task<IActionResult> RevokeSession(int id, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentSession(out var userId, out var sessionId))
+        {
+            return Unauthorized(Result.Fail("Session yaroqsiz"));
+        }
+
+        var revoked = await authService.RevokeSessionAsync(userId, id, sessionId, cancellationToken);
+        if (!revoked)
+        {
+            return NotFound(Result.Fail("Sessiya topilmadi"));
+        }
+
+        return Ok(Result.Success());
+    }
+
+    [Authorize]
+    [HttpPost("sessions/logout-others")]
+    public async Task<IActionResult> LogoutOthers(CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentSession(out var userId, out var sessionId))
+        {
+            return Unauthorized(Result.Fail("Session yaroqsiz"));
+        }
+
+        await authService.LogoutAllOthersAsync(userId, sessionId, cancellationToken);
+        return Ok(Result.Success());
     }
 
     private AuthSessionMetadata GetSessionMetadata(string? deviceName, string? systemVersion, string? appVersion) =>

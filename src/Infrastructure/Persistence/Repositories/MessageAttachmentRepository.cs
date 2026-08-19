@@ -1,5 +1,8 @@
+using Application.DataTransferObjects.Pagination;
 using Application.Features.Messages;
+using Application.Features.Messages.DataTransferObjects.Responses;
 using Domain.Entities;
+using Infrastructure.Persistence.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Persistence.Repositories;
@@ -15,8 +18,37 @@ public sealed class MessageAttachmentRepository(ChatDb db) : IMessageAttachmentR
         await db.Messages.AddAsync(message, cancellationToken);
         await db.Attachments.AddAsync(attachment, cancellationToken);
     }
+    public async Task AddFileAsync(Message message, Domain.Entities.File file, Attachment attachment, CancellationToken cancellationToken = default)
+    {
+        await db.Set<Domain.Entities.File>().AddAsync(file, cancellationToken);
+        await db.Messages.AddAsync(message, cancellationToken);
+        await db.Attachments.AddAsync(attachment, cancellationToken);
+    }
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) => db.SaveChangesAsync(cancellationToken);
     public Task<Message?> GetMessageAsync(int messageId, CancellationToken cancellationToken = default) => db.Messages.AsNoTracking().Include(message => message.Sender).Include(message => message.Attachments).ThenInclude(attachment => attachment.File).FirstOrDefaultAsync(message => message.Id == messageId, cancellationToken);
     public Task<Photo?> GetPhotoForMemberAsync(int fileId, int userId, CancellationToken cancellationToken = default) => db.Photos.AsNoTracking().Include(photo => photo.File).Where(photo => photo.FileId == fileId && photo.File.Attachments.Any(attachment => attachment.Message.Chat.Members.Any(member => member.UserId == userId))).FirstOrDefaultAsync(cancellationToken);
+    public Task<Domain.Entities.File?> GetFileForMemberAsync(int fileId, int userId, CancellationToken cancellationToken = default) => db.Set<Domain.Entities.File>().AsNoTracking().Where(file => file.Id == fileId && file.Attachments.Any(attachment => attachment.Type == AttachmentType.File && attachment.Message.Chat.Members.Any(member => member.UserId == userId))).FirstOrDefaultAsync(cancellationToken);
     public async Task<IReadOnlyCollection<int>> GetMemberUserIdsAsync(int chatId, CancellationToken cancellationToken = default) => await db.ChatMembers.Where(member => member.ChatId == chatId).Select(member => member.UserId).ToArrayAsync(cancellationToken);
+
+    public async Task<AttachmentSummaryDto> GetAttachmentSummaryAsync(int chatId, CancellationToken cancellationToken = default)
+    {
+        var counts = await db.Attachments.AsNoTracking()
+            .Where(attachment => attachment.Message.ChatId == chatId)
+            .GroupBy(attachment => attachment.Type)
+            .Select(group => new { group.Key, Count = group.Count() })
+            .ToListAsync(cancellationToken);
+
+        int CountOf(AttachmentType type) => counts.FirstOrDefault(count => count.Key == type)?.Count ?? 0;
+        return new(CountOf(AttachmentType.Photo), CountOf(AttachmentType.Video), CountOf(AttachmentType.File));
+    }
+
+    public Task<CursorPagedResponse<MessageAttachmentDto>> GetAttachmentsAsync(int chatId, AttachmentType type, CursorPaginationRequest pagination, CancellationToken cancellationToken = default) =>
+        db.Attachments.AsNoTracking()
+            .Where(attachment => attachment.Message.ChatId == chatId && attachment.Type == type)
+            .ToCursorPagedResponseAsync(pagination, attachment => attachment.FileId, attachment => new MessageAttachmentDto(
+                attachment.FileId, (int)attachment.Type, attachment.File.Name, attachment.File.MimeType, attachment.File.SizeBytes,
+                attachment.Type == AttachmentType.Photo || attachment.Type == AttachmentType.Video ? db.Photos.Where(photo => photo.FileId == attachment.FileId).Select(photo => photo.Width).FirstOrDefault() : 0,
+                attachment.Type == AttachmentType.Photo || attachment.Type == AttachmentType.Video ? db.Photos.Where(photo => photo.FileId == attachment.FileId).Select(photo => photo.Height).FirstOrDefault() : 0,
+                attachment.Type == AttachmentType.File ? $"/api/media/files/{attachment.FileId}" : attachment.Type == AttachmentType.Video ? $"/api/media/videos/{attachment.FileId}" : $"/api/media/images/{attachment.FileId}"),
+                dto => dto.Id, cancellationToken);
 }

@@ -1,5 +1,8 @@
 using System.Security.Claims;
+using Application.Features.Authentication;
 using Application.Features.Messages;
+using Application.Features.Presence;
+using Application.Features.Profiles;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
@@ -9,12 +12,55 @@ namespace API.Hubs;
 public sealed class ChatHub(
     IMessageRepository messageRepository,
     IChatRealtimeNotifier realtimeNotifier,
+    IPresenceTracker presenceTracker,
+    IAuthRepository authRepository,
+    IProfileRepository profileRepository,
     TimeProvider timeProvider) : Hub
 {
+    private static readonly TimeSpan OfflineGracePeriod = TimeSpan.FromSeconds(8);
+
     public override async Task OnConnectedAsync()
     {
-        await Groups.AddToGroupAsync(Context.ConnectionId, ChatHubGroups.User(GetCurrentUserId()));
+        var userId = GetCurrentUserId();
+        await Groups.AddToGroupAsync(Context.ConnectionId, ChatHubGroups.User(userId));
+
+        if (presenceTracker.AddConnection(userId, Context.ConnectionId))
+        {
+            var relatedUserIds = await profileRepository.GetRelatedUserIdsAsync(userId, Context.ConnectionAborted);
+            await realtimeNotifier.UserPresenceChangedAsync(userId, true, null, relatedUserIds, Context.ConnectionAborted);
+        }
+
         await base.OnConnectedAsync();
+    }
+
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        var userId = GetCurrentUserId();
+        var sessionId = GetCurrentSessionId();
+        await base.OnDisconnectedAsync(exception);
+
+        if (!presenceTracker.RemoveConnection(userId, Context.ConnectionId))
+        {
+            return;
+        }
+
+        // Grace period absorbs quick reconnects (page refresh, brief network drop) without flashing "offline".
+        await Task.Delay(OfflineGracePeriod, CancellationToken.None);
+        if (presenceTracker.IsOnline(userId))
+        {
+            return;
+        }
+
+        var lastSeenAt = timeProvider.GetUtcNow().UtcDateTime;
+        var session = await authRepository.FindSessionAsync(userId, sessionId, CancellationToken.None);
+        if (session is not null)
+        {
+            session.LastActiveAt = lastSeenAt;
+            await authRepository.SaveChangesAsync(CancellationToken.None);
+        }
+
+        var recipientUserIds = await profileRepository.GetRelatedUserIdsAsync(userId, CancellationToken.None);
+        await realtimeNotifier.UserPresenceChangedAsync(userId, false, lastSeenAt, recipientUserIds, CancellationToken.None);
     }
 
     public async Task JoinChat(int chatId)
@@ -55,4 +101,8 @@ public sealed class ChatHub(
     private int GetCurrentUserId() =>
         int.Parse(Context.User?.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? throw new HubException("Foydalanuvchi aniqlanmadi."));
+
+    private int GetCurrentSessionId() =>
+        int.Parse(Context.User?.FindFirstValue("sid")
+            ?? throw new HubException("Sessiya aniqlanmadi."));
 }

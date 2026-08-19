@@ -8,6 +8,8 @@ public class Story
     public int UserId { get; set; }
     public int FileId { get; set; }
     public string? Caption { get; set; }
+    public AttachmentType Type { get; set; }
+    public DateTime CreatedAt { get; set; }
     public DateTime ExpiresAt { get; set; }
     public int ViewCount { get; set; }
 

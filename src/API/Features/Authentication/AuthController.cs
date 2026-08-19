@@ -12,9 +12,12 @@ namespace API.Features.Authentication;
 
 [ApiController]
 [Route("api/auth")]
-public sealed class AuthController(IAuthService authService, IWebHostEnvironment environment) : ControllerBase
+public sealed class AuthController(IAuthService authService, IWebHostEnvironment environment, GoogleAuthOptions googleAuthOptions) : ControllerBase
 {
     private const string RefreshCookieName = "nationalchat_refresh";
+
+    [HttpGet("google/client-id")]
+    public IActionResult GetGoogleClientId() => Ok(Result.Success(new { clientId = googleAuthOptions.ClientId }));
 
     [HttpPost("request-code")]
     public async Task<IActionResult> RequestCode(RequestCodeRequest request, CancellationToken cancellationToken)

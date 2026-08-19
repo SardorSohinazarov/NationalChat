@@ -9,6 +9,12 @@ public sealed record VerifyCodeRequest(
     string? SystemVersion,
     string? AppVersion);
 
+public sealed record GoogleSignInRequest(
+    string IdToken,
+    string? DeviceName,
+    string? SystemVersion,
+    string? AppVersion);
+
 public sealed record RegisterRequest(
     string RegistrationToken,
     string Username,

@@ -16,11 +16,13 @@ public sealed class AuthService(
     IRefreshTokenHasher refreshTokenHasher,
     IAccessTokenIssuer accessTokenIssuer,
     IRegistrationTokenService registrationTokenService,
+    IGoogleTokenValidator googleTokenValidator,
     IEmailSender emailSender,
     TimeProvider timeProvider,
     AuthOptions options,
     IValidator<RequestSignInCodeCommand> requestSignInCodeValidator,
     IValidator<VerifySignInCodeCommand> verifySignInCodeValidator,
+    IValidator<GoogleSignInCommand> googleSignInValidator,
     IValidator<CompleteRegistrationCommand> completeRegistrationValidator,
     IValidator<RefreshSessionCommand> refreshSessionValidator) : IAuthService
 {
@@ -145,6 +147,39 @@ public sealed class AuthService(
 
         var tokens = await CreateSessionAsync(user, command.Session, now, cancellationToken);
         return new(true, tokens, null);
+    }
+
+    public async Task<SignInVerificationResult> SignInWithGoogleAsync(GoogleSignInCommand command, CancellationToken cancellationToken = default)
+    {
+        var validation = await googleSignInValidator.ValidateAsync(command, cancellationToken);
+        if (!validation.IsValid)
+        {
+            return new(false, false, null, null, validation.Errors[0].ErrorMessage);
+        }
+
+        var identity = await googleTokenValidator.ValidateAsync(command.IdToken, cancellationToken);
+        if (identity is null || !identity.EmailVerified)
+        {
+            return new(false, false, null, null, "Google hisobini tasdiqlab bo'lmadi.");
+        }
+
+        var email = NormalizeEmail(identity.Email);
+        if (email is null)
+        {
+            return new(false, false, null, null, "Google hisobidagi email manzili noto'g'ri.");
+        }
+
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+        var user = await store.FindUserByEmailAsync(email, cancellationToken);
+
+        if (user is null || !user.IsProfileCompleted)
+        {
+            var registrationToken = registrationTokenService.Create(email, now.Add(options.RegistrationTokenLifetime));
+            return new(true, true, registrationToken, null, null);
+        }
+
+        var tokens = await CreateSessionAsync(user, command.Session, now, cancellationToken);
+        return new(true, false, null, tokens, null);
     }
 
     public async Task<TokenPair?> RefreshSessionAsync(RefreshSessionCommand command, CancellationToken cancellationToken = default)

@@ -44,6 +44,18 @@ public sealed class VerifyCodeRequestValidator : AbstractValidator<VerifyCodeReq
     }
 }
 
+public sealed class GoogleSignInCommandValidator : AbstractValidator<GoogleSignInCommand>
+{
+    public GoogleSignInCommandValidator() =>
+        RuleFor(x => x.IdToken).NotEmpty().WithMessage("Google tokeni kiritilishi kerak.");
+}
+
+public sealed class GoogleSignInRequestValidator : AbstractValidator<GoogleSignInRequest>
+{
+    public GoogleSignInRequestValidator() =>
+        RuleFor(x => x.IdToken).NotEmpty().WithMessage("Google tokeni kiritilishi kerak.");
+}
+
 public sealed class CompleteRegistrationCommandValidator : AbstractValidator<CompleteRegistrationCommand>
 {
     public CompleteRegistrationCommandValidator()

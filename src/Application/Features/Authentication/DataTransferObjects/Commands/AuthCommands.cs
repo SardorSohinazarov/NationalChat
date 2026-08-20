@@ -6,6 +6,8 @@ public sealed record RequestSignInCodeCommand(string Email, string IpAddress);
 
 public sealed record VerifySignInCodeCommand(string Email, string Code, AuthSessionMetadata Session);
 
+public sealed record GoogleSignInCommand(string IdToken, AuthSessionMetadata Session);
+
 public sealed record CompleteRegistrationCommand(
     string RegistrationToken,
     string Username,

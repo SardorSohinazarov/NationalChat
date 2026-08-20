@@ -12,9 +12,12 @@ namespace API.Features.Authentication;
 
 [ApiController]
 [Route("api/auth")]
-public sealed class AuthController(IAuthService authService, IWebHostEnvironment environment) : ControllerBase
+public sealed class AuthController(IAuthService authService, IWebHostEnvironment environment, GoogleAuthOptions googleAuthOptions) : ControllerBase
 {
     private const string RefreshCookieName = "nationalchat_refresh";
+
+    [HttpGet("google/client-id")]
+    public IActionResult GetGoogleClientId() => Ok(Result.Success(new { clientId = googleAuthOptions.ClientId }));
 
     [HttpPost("request-code")]
     public async Task<IActionResult> RequestCode(RequestCodeRequest request, CancellationToken cancellationToken)
@@ -37,6 +40,31 @@ public sealed class AuthController(IAuthService authService, IWebHostEnvironment
     {
         var result = await authService.VerifySignInCodeAsync(
             new VerifySignInCodeCommand(request.Email, request.Code, GetSessionMetadata(request.DeviceName, request.SystemVersion, request.AppVersion)),
+            cancellationToken);
+
+        if (!result.IsSuccessful)
+        {
+            return BadRequest(Result.Fail(result.Error));
+        }
+
+        if (result.RegistrationRequired)
+        {
+            return Ok(Result.Success(new { registrationRequired = true, registrationToken = result.RegistrationToken }));
+        }
+
+        WriteRefreshCookie(result.Tokens!);
+        return Ok(Result.Success(new
+        {
+            accessToken = result.Tokens!.AccessToken,
+            accessTokenExpiresAt = result.Tokens.AccessTokenExpiresAt
+        }));
+    }
+
+    [HttpPost("google")]
+    public async Task<IActionResult> GoogleSignIn(GoogleSignInRequest request, CancellationToken cancellationToken)
+    {
+        var result = await authService.SignInWithGoogleAsync(
+            new GoogleSignInCommand(request.IdToken, GetSessionMetadata(request.DeviceName, request.SystemVersion, request.AppVersion)),
             cancellationToken);
 
         if (!result.IsSuccessful)

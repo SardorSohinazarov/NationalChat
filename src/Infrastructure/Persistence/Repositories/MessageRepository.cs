@@ -13,8 +13,13 @@ public sealed class MessageRepository(ChatDb db) : IMessageRepository
     public Task<bool> IsChatMemberAsync(int chatId, int userId, CancellationToken cancellationToken = default) =>
         db.ChatMembers.AnyAsync(member => member.ChatId == chatId && member.UserId == userId, cancellationToken);
 
+    public Task<ChatMember?> FindMembershipAsync(int chatId, int userId, CancellationToken cancellationToken = default) =>
+        db.ChatMembers.AsNoTracking()
+            .Include(member => member.Chat)
+            .FirstOrDefaultAsync(member => member.ChatId == chatId && member.UserId == userId, cancellationToken);
+
     public Task<bool> ExistsInChatAsync(int messageId, int chatId, CancellationToken cancellationToken = default) =>
-        db.Messages.AnyAsync(message => message.Id == messageId && message.ChatId == chatId, cancellationToken);
+        db.Messages.AnyAsync(message => message.Id == messageId && message.ChatId == chatId && message.ServiceAction == null, cancellationToken);
 
     public Task<CursorPagedResponse<MessageDto>> GetMessagesAsync(int chatId, int currentUserId, CursorPaginationRequest pagination, CancellationToken cancellationToken = default) =>
         db.Messages.AsNoTracking()
@@ -23,7 +28,7 @@ public sealed class MessageRepository(ChatDb db) : IMessageRepository
 
     public async Task<IReadOnlyList<MessageDto>> SearchAsync(int chatId, int currentUserId, string query, int limit, CancellationToken cancellationToken = default) =>
         await db.Messages.AsNoTracking()
-            .Where(message => message.ChatId == chatId && message.TextContent != null && EF.Functions.ILike(message.TextContent, $"%{query}%"))
+            .Where(message => message.ChatId == chatId && message.ServiceAction == null && message.TextContent != null && EF.Functions.ILike(message.TextContent, $"%{query}%"))
             .OrderByDescending(message => message.Id)
             .Take(limit)
             .Select(MessageMapper.Projection(currentUserId, db.Photos))
@@ -58,12 +63,13 @@ public sealed class MessageRepository(ChatDb db) : IMessageRepository
 
     public Task<Message?> GetOwnedMessageAsync(int chatId, int messageId, int userId, CancellationToken cancellationToken = default) =>
         db.Messages.Include(message => message.Sender)
-            .FirstOrDefaultAsync(message => message.Id == messageId && message.ChatId == chatId && message.SenderId == userId, cancellationToken);
+            .FirstOrDefaultAsync(message => message.Id == messageId && message.ChatId == chatId && message.SenderId == userId && message.ServiceAction == null, cancellationToken);
 
     public async Task SoftDeleteAsync(Message message, DateTime deletedAt, CancellationToken cancellationToken = default) { message.DeletedAt = deletedAt; await db.SaveChangesAsync(cancellationToken); }
 
     public Task ClearChatAsync(int chatId, DateTime deletedAt, CancellationToken cancellationToken = default) =>
-        db.Messages.Where(message => message.ChatId == chatId).ExecuteUpdateAsync(x => x.SetProperty(message => message.DeletedAt, deletedAt), cancellationToken);
+        // Service messages (e.g. "group created") are kept so a cleared group stays in its members' chat lists.
+        db.Messages.Where(message => message.ChatId == chatId && message.ServiceAction == null).ExecuteUpdateAsync(x => x.SetProperty(message => message.DeletedAt, deletedAt), cancellationToken);
 
     public async Task<IReadOnlyCollection<int>> GetMemberUserIdsAsync(int chatId, CancellationToken cancellationToken = default) =>
         await db.ChatMembers.AsNoTracking()

@@ -15,6 +15,16 @@ public enum ChatMemberRole
     Creator = 3
 }
 
+public enum MessageServiceAction
+{
+    GroupCreated = 1,
+    MembersAdded = 2,
+    MemberRemoved = 3,
+    MemberLeft = 4,
+    TitleChanged = 5,
+    PhotoChanged = 6
+}
+
 public enum PollType
 {
     Regular = 1,

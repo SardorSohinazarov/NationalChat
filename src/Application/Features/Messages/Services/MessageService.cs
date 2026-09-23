@@ -3,6 +3,7 @@ using Application.Features.Messages.DataTransferObjects.Requests;
 using Application.Features.Messages.DataTransferObjects.Responses;
 using Application.Features.Messages.Factories;
 using Application.Features.Messages.Mappers;
+using Domain.Entities;
 using FluentValidation;
 
 namespace Application.Features.Messages;
@@ -101,7 +102,9 @@ public sealed class MessageService(
 
     public async Task<bool> ClearChatAsync(int currentUserId, int chatId, CancellationToken cancellationToken = default)
     {
-        if (!await repository.IsChatMemberAsync(chatId, currentUserId, cancellationToken)) return false;
+        var membership = await repository.FindMembershipAsync(chatId, currentUserId, cancellationToken);
+        if (membership is null) return false;
+        if (membership.Chat.Type == ChatType.Group && membership.Role == ChatMemberRole.Member) return false;
         var memberIds = await repository.GetMemberUserIdsAsync(chatId, cancellationToken);
         await repository.ClearChatAsync(chatId, timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
         await realtimeNotifier.ChatClearedAsync(chatId, memberIds, cancellationToken);

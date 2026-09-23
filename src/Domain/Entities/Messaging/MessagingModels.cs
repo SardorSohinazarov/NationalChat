@@ -12,6 +12,7 @@ public class Message
     public DateTime? EditedAt { get; set; }
     public DateTime? DeletedAt { get; set; }
     public int? ReplyToMessageId { get; set; }
+    public MessageServiceAction? ServiceAction { get; set; }
 
     public Chat Chat { get; set; }
     public User Sender { get; set; }

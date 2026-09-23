@@ -5,6 +5,7 @@ using Application.Features.Authentication.Validators;
 using Application.Features.Contacts;
 using Application.Features.Profiles;
 using Application.Features.Chats;
+using Application.Features.Groups;
 using Application.Features.Users;
 using Application.Features.Messages;
 using Application.Features.Files;
@@ -125,6 +126,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IProfileRepository, ProfileRepository>();
         services.AddScoped<IContactRepository, ContactRepository>();
         services.AddScoped<IChatRepository, ChatRepository>();
+        services.AddScoped<IGroupRepository, GroupRepository>();
         services.AddScoped<IUserDiscoveryRepository, UserDiscoveryRepository>();
         services.AddScoped<IMessageRepository, MessageRepository>();
         services.AddScoped<IMessageAttachmentRepository, MessageAttachmentRepository>();
@@ -185,6 +187,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IProfileService, ProfileService>();
         services.AddScoped<IContactService, ContactService>();
         services.AddScoped<IChatService, ChatService>();
+        services.AddScoped<IGroupService, GroupService>();
         services.AddScoped<IUserDiscoveryService, UserDiscoveryService>();
         services.AddScoped<IMessageService, MessageService>();
         services.AddScoped<IMessageAttachmentService, MessageAttachmentService>();

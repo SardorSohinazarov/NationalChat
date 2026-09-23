@@ -19,8 +19,15 @@ public static class ChatListMapper
                         member.User.Sessions.Where(session => session.RevokedAt == null).Select(session => (DateTime?)session.LastActiveAt).Max()))
                     .FirstOrDefault()
                 : null,
+            chat.Type == ChatType.Group
+                ? chat.Groups
+                    .Select(group => new GroupChatSummaryDto(group.Title, group.PhotoId, chat.Members.Count))
+                    .FirstOrDefault()
+                : null,
             chat.Messages.OrderByDescending(message => message.Id)
-                .Select(message => new ChatLastMessageDto(message.Id, message.TextContent, message.SentAt, message.SenderId, message.Sender.Username))
+                .Select(message => new ChatLastMessageDto(
+                    message.Id, message.TextContent, message.SentAt, message.SenderId,
+                    message.Sender.Username, message.Sender.FirstName, message.ServiceAction))
                 .FirstOrDefault(),
             chat.Messages.Count(message => message.SenderId != currentUserId && !message.Views.Any(view => view.UserId == currentUserId)));
 }

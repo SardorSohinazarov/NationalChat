@@ -7,6 +7,7 @@ namespace Application.Features.Messages;
 public interface IMessageRepository
 {
     Task<bool> IsChatMemberAsync(int chatId, int userId, CancellationToken cancellationToken = default);
+    Task<ChatMember?> FindMembershipAsync(int chatId, int userId, CancellationToken cancellationToken = default);
     Task<bool> ExistsInChatAsync(int messageId, int chatId, CancellationToken cancellationToken = default);
     Task<CursorPagedResponse<MessageDto>> GetMessagesAsync(int chatId, int currentUserId, CursorPaginationRequest pagination, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<MessageDto>> SearchAsync(int chatId, int currentUserId, string query, int limit, CancellationToken cancellationToken = default);

@@ -14,6 +14,9 @@ public interface IGroupService
     Task<GroupResult> RemoveMemberAsync(int currentUserId, int chatId, int userId, CancellationToken cancellationToken = default);
     Task<GroupResult> UpdateMemberRoleAsync(int currentUserId, int chatId, int userId, UpdateGroupMemberRoleRequest request, CancellationToken cancellationToken = default);
     Task<GroupLeaveResult> LeaveAsync(int currentUserId, int chatId, CancellationToken cancellationToken = default);
+
+    /// <summary>Adds a verified organization member to an organization group (auto-join); false when not applicable.</summary>
+    Task<bool> JoinViaOrganizationAsync(int chatId, int userId, CancellationToken cancellationToken = default);
 }
 
 public sealed record GroupResult(GroupDto? Group, string? Error);

@@ -15,6 +15,7 @@ public class ChatMemberConfiguration : IEntityTypeConfiguration<ChatMember>
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Role).HasCommentFromEnum();
         builder.Property(x => x.JoinedAt).IsRequired();
+        builder.HasIndex(x => new { x.ChatId, x.UserId }).IsUnique();
 
         builder.HasOne(x => x.Chat)
             .WithMany(x => x.Members)

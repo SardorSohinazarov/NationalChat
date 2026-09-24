@@ -39,7 +39,7 @@ public sealed class GroupService(
         if (!validation.IsValid) return Fail(validation.Errors[0].ErrorMessage);
 
         var memberIds = request.MemberIds.Where(id => id != currentUserId).Distinct().ToArray();
-        if (memberIds.Length == 0) return Fail("Kamida bitta a'zo tanlanishi kerak.");
+        if (memberIds.Length == 0 && !request.AutoJoin) return Fail("Kamida bitta a'zo tanlanishi kerak.");
 
         var users = await repository.FindUsersAsync([currentUserId, .. memberIds], cancellationToken);
         var creator = users.FirstOrDefault(user => user.Id == currentUserId);
@@ -47,8 +47,30 @@ public sealed class GroupService(
         if (creator is null) return Fail("Foydalanuvchi aniqlanmadi.");
         if (members.Length != memberIds.Length) return Fail("Ba'zi foydalanuvchilar topilmadi.");
 
+        Organization? organization = null;
+        if (request.OrganizationOnly)
+        {
+            var membership = creator.OrganizationMembership;
+            if (membership?.Organization is null) return Fail("Tashkilot guruhini faqat tashkilotning tasdiqlangan a'zosi yarata oladi.");
+            organization = membership.Organization;
+            if (request.AutoJoin && membership.Role != OrganizationRole.Admin)
+                return Fail($"Avtomatik qo'shishni faqat {organization.ShortName} admini yoqa oladi.");
+            if (members.Any(user => !IsOrganizationMember(user, organization.Id))) return Fail(OrganizationOnlyError(organization));
+
+            if (request.AutoJoin)
+            {
+                // Everyone already verified joins now; later members join on their first verified sign-in.
+                var others = await repository.FindOrganizationUsersAsync(
+                    organization.Id, [currentUserId, .. memberIds], GroupLimits.MaxOrganizationMembers - 1 - members.Length, cancellationToken);
+                members = [.. members, .. others];
+            }
+        }
+
+        if (members.Length + 1 > GroupLimits.MaxMembersFor(organization is not null))
+            return Fail($"Guruhda {GroupLimits.MaxMembersFor(organization is not null)} tadan ortiq a'zo bo'lishi mumkin emas.");
+
         var now = timeProvider.GetUtcNow().UtcDateTime;
-        var group = GroupFactory.Create(request.Title.Trim(), NormalizeDescription(request.Description), creator, members, now);
+        var group = GroupFactory.Create(request.Title.Trim(), NormalizeDescription(request.Description), creator, members, now, organization, request.AutoJoin);
         await repository.AddGroupAsync(group, cancellationToken);
         await repository.SaveChangesAsync(cancellationToken);
 
@@ -119,10 +141,13 @@ public sealed class GroupService(
         var existingIds = group.Chat.Members.Select(member => member.UserId).ToHashSet();
         var newIds = request.UserIds.Where(id => !existingIds.Contains(id)).Distinct().ToArray();
         if (newIds.Length == 0) return Fail("Tanlangan foydalanuvchilar allaqachon guruhda.");
-        if (existingIds.Count + newIds.Length > GroupLimits.MaxMembers) return Fail($"Guruhda {GroupLimits.MaxMembers} tadan ortiq a'zo bo'lishi mumkin emas.");
+        var maxMembers = GroupLimits.MaxMembersFor(group.OrganizationId is not null);
+        if (existingIds.Count + newIds.Length > maxMembers) return Fail($"Guruhda {maxMembers} tadan ortiq a'zo bo'lishi mumkin emas.");
 
         var users = await repository.FindUsersAsync(newIds, cancellationToken);
         if (users.Count != newIds.Length) return Fail("Ba'zi foydalanuvchilar topilmadi.");
+        if (group.Organization is { } organization && users.Any(user => !IsOrganizationMember(user, organization.Id)))
+            return Fail(OrganizationOnlyError(organization));
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         foreach (var user in users)
@@ -219,6 +244,30 @@ public sealed class GroupService(
         await PublishGroupUpdatedAsync(group, cancellationToken);
         return new(true, null);
     }
+
+    public async Task<bool> JoinViaOrganizationAsync(int chatId, int userId, CancellationToken cancellationToken = default)
+    {
+        var group = await repository.GetGroupAsync(chatId, cancellationToken);
+        if (group?.Organization is null || FindMember(group, userId) is not null) return false;
+        if (group.Chat.Members.Count >= GroupLimits.MaxOrganizationMembers) return false;
+
+        var user = (await repository.FindUsersAsync([userId], cancellationToken)).FirstOrDefault();
+        if (user is null || !IsOrganizationMember(user, group.Organization.Id)) return false;
+
+        group.Chat.Members.Add(GroupFactory.CreateMember(user, ChatMemberRole.Member, timeProvider.GetUtcNow().UtcDateTime));
+        var serviceMessage = AddServiceMessage(group, user, MessageServiceAction.MemberJoinedViaOrganization, group.Organization.ShortName);
+        await repository.SaveChangesAsync(cancellationToken);
+
+        await PublishServiceMessageAsync(serviceMessage, group, cancellationToken);
+        await PublishGroupUpdatedAsync(group, cancellationToken);
+        return true;
+    }
+
+    private static bool IsOrganizationMember(User user, int organizationId) =>
+        user.OrganizationMembership?.OrganizationId == organizationId;
+
+    private static string OrganizationOnlyError(Organization organization) =>
+        $"Bu guruhga faqat {organization.ShortName} a'zolarini qo'shish mumkin.";
 
     private static bool CanManageGroup(ChatMember actor) =>
         actor.Role is ChatMemberRole.Admin or ChatMemberRole.Creator;

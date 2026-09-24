@@ -5,6 +5,7 @@ using Application.Features.Authentication.DataTransferObjects.Responses;
 using Application.Features.Authentication.DataTransferObjects.Session;
 using Application.Features.Authentication.Factories;
 using Application.Features.Authentication.Mappers;
+using Application.Features.Organizations;
 using FluentValidation;
 using Domain.Entities;
 
@@ -18,6 +19,7 @@ public sealed class AuthService(
     IRegistrationTokenService registrationTokenService,
     IGoogleTokenValidator googleTokenValidator,
     IEmailSender emailSender,
+    IOrganizationMembershipService organizationMembership,
     TimeProvider timeProvider,
     AuthOptions options,
     IValidator<RequestSignInCodeCommand> requestSignInCodeValidator,
@@ -271,8 +273,14 @@ public sealed class AuthService(
         return sessions.Select(session => ActiveSessionMapper.ToDto(session, currentSessionId)).ToList();
     }
 
+    /// <summary>
+    /// Every sign-in path (OTP code, Google with a verified e-mail, registration) ends here, i.e. only after the
+    /// e-mail address has been proven, which is what organization membership relies on.
+    /// </summary>
     private async Task<TokenPair> CreateSessionAsync(User user, AuthSessionMetadata metadata, DateTime now, CancellationToken cancellationToken)
     {
+        await organizationMembership.EnsureMembershipAsync(user, cancellationToken);
+
         var refreshToken = CreateRefreshToken();
         var expiresAt = now.Add(options.RefreshTokenLifetime);
         var session = AuthEntityFactory.CreateSession(user.Id, metadata, refreshTokenHasher.Hash(refreshToken), now, expiresAt);

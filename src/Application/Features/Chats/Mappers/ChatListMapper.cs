@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using Application.Features.Chats.DataTransferObjects.Responses;
+using Application.Features.Organizations.DataTransferObjects.Responses;
 using Domain.Entities;
 
 namespace Application.Features.Chats.Mappers;
@@ -16,7 +17,8 @@ public static class ChatListMapper
                     .Select(member => new PrivateChatParticipantDto(
                         member.User.Id, member.User.Username, member.User.FirstName, member.User.LastName, member.User.ProfilePhotoId,
                         false,
-                        member.User.Sessions.Where(session => session.RevokedAt == null).Select(session => (DateTime?)session.LastActiveAt).Max()))
+                        member.User.Sessions.Where(session => session.RevokedAt == null).Select(session => (DateTime?)session.LastActiveAt).Max(),
+                        member.User.OrganizationMembership == null ? null : new OrganizationBadgeDto(member.User.OrganizationMembership.Organization.Id, member.User.OrganizationMembership.Organization.ShortName)))
                     .FirstOrDefault()
                 : null,
             chat.Type == ChatType.Group

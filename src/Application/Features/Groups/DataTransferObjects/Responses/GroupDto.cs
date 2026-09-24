@@ -1,3 +1,4 @@
+using Application.Features.Organizations.DataTransferObjects.Responses;
 using Domain.Entities;
 
 namespace Application.Features.Groups.DataTransferObjects.Responses;
@@ -11,7 +12,8 @@ public sealed record GroupMemberDto(
     ChatMemberRole Role,
     bool IsOnline,
     DateTime? LastSeenAt,
-    DateTime JoinedAt);
+    DateTime JoinedAt,
+    OrganizationBadgeDto? Organization);
 
 public sealed record GroupDto(
     int ChatId,
@@ -21,4 +23,6 @@ public sealed record GroupDto(
     int CreatorId,
     ChatMemberRole MyRole,
     DateTime CreatedAt,
-    IReadOnlyList<GroupMemberDto> Members);
+    IReadOnlyList<GroupMemberDto> Members,
+    OrganizationBadgeDto? Organization,
+    bool AutoJoin);

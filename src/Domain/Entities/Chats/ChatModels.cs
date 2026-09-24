@@ -34,10 +34,15 @@ public class Group
     public string? InviteLink { get; set; }
     public int CreatorId { get; set; }
     public int? PhotoId { get; set; }
+    /// <summary>Set for organization-only groups: only verified members of this organization can join.</summary>
+    public int? OrganizationId { get; set; }
+    /// <summary>New verified members of <see cref="OrganizationId"/> are added automatically.</summary>
+    public bool AutoJoin { get; set; }
 
     public Chat Chat { get; set; }
     public User Creator { get; set; }
     public Photo? Photo { get; set; }
+    public Organization? Organization { get; set; }
 }
 
 public class Channel

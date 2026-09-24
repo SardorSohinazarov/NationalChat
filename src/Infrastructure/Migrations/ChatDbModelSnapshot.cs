@@ -281,9 +281,10 @@ namespace Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ChatId");
-
                     b.HasIndex("UserId");
+
+                    b.HasIndex("ChatId", "UserId")
+                        .IsUnique();
 
                     b.ToTable("chat_members", "chat");
                 });
@@ -453,6 +454,9 @@ namespace Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("AutoJoin")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("ChatId")
                         .HasColumnType("integer");
 
@@ -465,6 +469,9 @@ namespace Infrastructure.Migrations
                     b.Property<string>("InviteLink")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
+
+                    b.Property<int?>("OrganizationId")
+                        .HasColumnType("integer");
 
                     b.Property<int?>("PhotoId")
                         .HasColumnType("integer");
@@ -482,6 +489,8 @@ namespace Infrastructure.Migrations
                     b.HasIndex("CreatorId");
 
                     b.HasIndex("PhotoId");
+
+                    b.HasIndex("OrganizationId", "AutoJoin");
 
                     b.ToTable("groups", "chat");
                 });
@@ -517,7 +526,7 @@ namespace Infrastructure.Migrations
 
                     b.Property<int?>("ServiceAction")
                         .HasColumnType("integer")
-                        .HasComment("1 = GroupCreated, 2 = MembersAdded, 3 = MemberRemoved, 4 = MemberLeft, 5 = TitleChanged, 6 = PhotoChanged");
+                        .HasComment("1 = GroupCreated, 2 = MembersAdded, 3 = MemberRemoved, 4 = MemberLeft, 5 = TitleChanged, 6 = PhotoChanged, 7 = MemberJoinedViaOrganization");
 
                     b.Property<string>("TextContent")
                         .HasColumnType("TEXT");
@@ -557,6 +566,95 @@ namespace Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("message_views", "messaging");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Organization", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("ShortName")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ShortName")
+                        .IsUnique();
+
+                    b.ToTable("organizations", "organizations");
+                });
+
+            modelBuilder.Entity("Domain.Entities.OrganizationDomain", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Domain")
+                        .IsRequired()
+                        .HasMaxLength(253)
+                        .HasColumnType("character varying(253)");
+
+                    b.Property<int>("OrganizationId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Domain")
+                        .IsUnique();
+
+                    b.HasIndex("OrganizationId");
+
+                    b.ToTable("organization_domains", "organizations");
+                });
+
+            modelBuilder.Entity("Domain.Entities.OrganizationMember", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("OrganizationId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("integer")
+                        .HasComment("1 = Member, 2 = Admin");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("VerifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("organization_members", "organizations");
                 });
 
             modelBuilder.Entity("Domain.Entities.Photo", b =>
@@ -1263,6 +1361,11 @@ namespace Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Domain.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Domain.Entities.Photo", "Photo")
                         .WithMany()
                         .HasForeignKey("PhotoId")
@@ -1271,6 +1374,8 @@ namespace Infrastructure.Migrations
                     b.Navigation("Chat");
 
                     b.Navigation("Creator");
+
+                    b.Navigation("Organization");
 
                     b.Navigation("Photo");
                 });
@@ -1316,6 +1421,36 @@ namespace Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Message");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Domain.Entities.OrganizationDomain", b =>
+                {
+                    b.HasOne("Domain.Entities.Organization", "Organization")
+                        .WithMany("Domains")
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("Domain.Entities.OrganizationMember", b =>
+                {
+                    b.HasOne("Domain.Entities.Organization", "Organization")
+                        .WithMany("Members")
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.User", "User")
+                        .WithOne("OrganizationMembership")
+                        .HasForeignKey("Domain.Entities.OrganizationMember", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
 
                     b.Navigation("User");
                 });
@@ -1592,6 +1727,13 @@ namespace Infrastructure.Migrations
                     b.Navigation("Views");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Organization", b =>
+                {
+                    b.Navigation("Domains");
+
+                    b.Navigation("Members");
+                });
+
             modelBuilder.Entity("Domain.Entities.Poll", b =>
                 {
                     b.Navigation("Options");
@@ -1623,6 +1765,8 @@ namespace Infrastructure.Migrations
                     b.Navigation("Contacts");
 
                     b.Navigation("CreatedGroups");
+
+                    b.Navigation("OrganizationMembership");
 
                     b.Navigation("Reactions");
 

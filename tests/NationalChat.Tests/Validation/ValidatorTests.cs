@@ -61,4 +61,25 @@ public sealed class ValidatorTests
     {
         Assert.Equal(expected, new UpdateScriptPreferenceRequestValidator().Validate(new UpdateScriptPreferenceRequest(preference)).IsValid);
     }
+
+    [Fact]
+    public void CreateGroup_AutoJoinWithoutOrganization_IsInvalid()
+    {
+        Assert.False(new CreateGroupRequestValidator().Validate(new CreateGroupRequest("Guruh", null, [2], AutoJoin: true)).IsValid);
+    }
+
+    [Fact]
+    public void CreateGroup_AutoJoinOrganizationGroup_MayStartWithoutPickedMembers()
+    {
+        Assert.True(new CreateGroupRequestValidator().Validate(new CreateGroupRequest("TATU", null, [], OrganizationOnly: true, AutoJoin: true)).IsValid);
+    }
+
+    [Fact]
+    public void CreateGroup_OrganizationGroup_AllowsMoreThanOrdinaryLimit()
+    {
+        var ids = Enumerable.Range(1, GroupLimits.MaxMembers).ToArray();
+
+        Assert.False(new CreateGroupRequestValidator().Validate(new CreateGroupRequest("Guruh", null, ids)).IsValid);
+        Assert.True(new CreateGroupRequestValidator().Validate(new CreateGroupRequest("Guruh", null, ids, OrganizationOnly: true)).IsValid);
+    }
 }

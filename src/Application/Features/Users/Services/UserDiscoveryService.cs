@@ -19,6 +19,6 @@ public sealed class UserDiscoveryService(
             return [];
         }
 
-        return await repository.SearchAsync(currentUserId, request.Query.Trim().ToLowerInvariant(), request.Limit, cancellationToken);
+        return await repository.SearchAsync(currentUserId, request.Query.Trim().ToLowerInvariant(), request.Limit, request.OrganizationId, cancellationToken);
     }
 }

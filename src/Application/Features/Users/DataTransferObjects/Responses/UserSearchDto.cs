@@ -1,3 +1,5 @@
+using Application.Features.Organizations.DataTransferObjects.Responses;
+
 namespace Application.Features.Users.DataTransferObjects.Responses;
 
 public sealed record UserSearchDto(
@@ -5,4 +7,5 @@ public sealed record UserSearchDto(
     string Username,
     string FirstName,
     string? LastName,
-    int? ProfilePhotoId);
+    int? ProfilePhotoId,
+    OrganizationBadgeDto? Organization);

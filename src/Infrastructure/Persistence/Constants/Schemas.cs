@@ -11,4 +11,5 @@ public static class Schemas
     public const string Bot = "bot";
     public const string Personal = "personal";
     public const string Security = "security";
+    public const string Organizations = "organizations";
 }

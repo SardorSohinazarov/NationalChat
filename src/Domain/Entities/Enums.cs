@@ -22,7 +22,14 @@ public enum MessageServiceAction
     MemberRemoved = 3,
     MemberLeft = 4,
     TitleChanged = 5,
-    PhotoChanged = 6
+    PhotoChanged = 6,
+    MemberJoinedViaOrganization = 7
+}
+
+public enum OrganizationRole
+{
+    Member = 1,
+    Admin = 2
 }
 
 /// <summary>Script a user reads messages in; messages are always stored as written.</summary>

@@ -34,4 +34,7 @@ public static class Tables
     public const string Sessions = "sessions";
     public const string TwoFactorAuth = "two_factor_auth";
     public const string EmailVerificationCodes = "email_verification_codes";
+    public const string Organizations = "organizations";
+    public const string OrganizationDomains = "organization_domains";
+    public const string OrganizationMembers = "organization_members";
 }

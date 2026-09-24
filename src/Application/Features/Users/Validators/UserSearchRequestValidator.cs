@@ -11,5 +11,6 @@ public sealed class UserSearchRequestValidator : AbstractValidator<UserSearchReq
             .Must(x => !string.IsNullOrWhiteSpace(x)).WithMessage("Qidiruv matni kiritilishi kerak.")
             .MaximumLength(50).WithMessage("Qidiruv matni 50 belgidan oshmasligi kerak.");
         RuleFor(x => x.Limit).InclusiveBetween(1, 50);
+        RuleFor(x => x.OrganizationId).GreaterThan(0).When(x => x.OrganizationId.HasValue);
     }
 }

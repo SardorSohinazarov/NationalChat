@@ -7,7 +7,9 @@ namespace Infrastructure.Persistence.Repositories;
 public sealed class ProfileRepository(ChatDb db) : BaseRepository<User>(db), IProfileRepository
 {
     public Task<User?> GetUserAsync(int userId, CancellationToken cancellationToken) =>
-        Db.Users.Include(x => x.ProfilePhoto).ThenInclude(photo => photo!.File).FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
+        Db.Users.Include(x => x.ProfilePhoto).ThenInclude(photo => photo!.File)
+            .Include(x => x.OrganizationMembership!).ThenInclude(membership => membership.Organization)
+            .FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
 
     public Task<bool> UsernameExistsAsync(string username, int excludedUserId, CancellationToken cancellationToken) =>
         Db.Users.AnyAsync(x => x.Username == username && x.Id != excludedUserId, cancellationToken);

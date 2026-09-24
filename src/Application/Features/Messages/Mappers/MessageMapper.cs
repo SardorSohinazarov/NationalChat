@@ -14,7 +14,8 @@ public static class MessageMapper
             message.Attachments.Select(attachment => new MessageAttachmentDto(attachment.FileId, (int)attachment.Type, attachment.File.Name, attachment.File.MimeType, attachment.File.SizeBytes,
                 attachment.Type == AttachmentType.Photo || attachment.Type == AttachmentType.Video ? photos.Where(photo => photo.FileId == attachment.FileId).Select(photo => photo.Width).FirstOrDefault() : 0,
                 attachment.Type == AttachmentType.Photo || attachment.Type == AttachmentType.Video ? photos.Where(photo => photo.FileId == attachment.FileId).Select(photo => photo.Height).FirstOrDefault() : 0,
-                ContentUrl(attachment.Type, attachment.FileId))).ToList());
+                ContentUrl(attachment.Type, attachment.FileId))).ToList(),
+            message.ServiceAction);
 
     public static MessageDto ToDto(Message message) =>
         new(message.Id, message.ChatId, message.TextContent!, message.SentAt, message.EditedAt, message.ReplyToMessageId,
@@ -22,7 +23,8 @@ public static class MessageMapper
             new MessageSenderDto(message.Sender.Id, message.Sender.Username, message.Sender.FirstName, message.Sender.LastName, message.Sender.ProfilePhotoId),
             false,
             message.Attachments.Select(attachment => new MessageAttachmentDto(attachment.FileId, (int)attachment.Type, attachment.File.Name, attachment.File.MimeType, attachment.File.SizeBytes, 0, 0,
-                ContentUrl(attachment.Type, attachment.FileId))).ToArray());
+                ContentUrl(attachment.Type, attachment.FileId))).ToArray(),
+            message.ServiceAction);
 
     private static string ContentUrl(AttachmentType type, int fileId) => type switch
     {

@@ -1,3 +1,5 @@
+using Domain.Entities;
+
 namespace Application.Features.Messages.DataTransferObjects.Responses;
 
 public sealed record MessageSenderDto(int Id, string Username, string FirstName, string? LastName, int? ProfilePhotoId);
@@ -13,4 +15,5 @@ public sealed record MessageDto(
     MessageReplyDto? ReplyToMessage,
     MessageSenderDto Sender,
     bool IsRead,
-    IReadOnlyList<MessageAttachmentDto> Attachments);
+    IReadOnlyList<MessageAttachmentDto> Attachments,
+    MessageServiceAction? ServiceAction);

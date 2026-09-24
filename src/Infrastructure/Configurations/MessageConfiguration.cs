@@ -1,5 +1,6 @@
 using Infrastructure.Persistence.Constants;
 using Domain.Entities;
+using Infrastructure.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -16,6 +17,7 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
         builder.Property(x => x.SentAt).IsRequired();
         builder.Property(x => x.EditedAt);
         builder.Property(x => x.DeletedAt);
+        builder.Property(x => x.ServiceAction).HasCommentFromEnum();
         builder.HasQueryFilter(x => x.DeletedAt == null);
 
         builder.HasOne(x => x.Chat)

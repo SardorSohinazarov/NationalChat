@@ -53,6 +53,11 @@ public sealed class ChatRepository(ChatDb db) : IChatRepository
                 chat => chat.LastMessage!.Id,
                 cancellationToken);
 
+    public Task<ChatMember?> FindMembershipAsync(int chatId, int userId, CancellationToken cancellationToken = default) =>
+        db.ChatMembers.AsNoTracking()
+            .Include(member => member.Chat)
+            .FirstOrDefaultAsync(member => member.ChatId == chatId && member.UserId == userId, cancellationToken);
+
     public async Task<IReadOnlyCollection<int>?> SoftDeleteAsync(int chatId, int userId, DateTime deletedAt, CancellationToken cancellationToken = default)
     {
         var chat = await db.Chats.Include(chat => chat.Members).FirstOrDefaultAsync(chat => chat.Id == chatId && chat.Members.Any(member => member.UserId == userId), cancellationToken);

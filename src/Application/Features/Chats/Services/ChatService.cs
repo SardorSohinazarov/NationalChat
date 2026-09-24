@@ -58,6 +58,11 @@ public sealed class ChatService(
 
     public async Task<bool> DeleteAsync(int currentUserId, int chatId, CancellationToken cancellationToken = default)
     {
+        var membership = await repository.FindMembershipAsync(chatId, currentUserId, cancellationToken);
+        if (membership is null) return false;
+        // Deleting a group removes it for everyone, so only its creator may do it; others leave instead.
+        if (membership.Chat.Type == ChatType.Group && membership.Role != ChatMemberRole.Creator) return false;
+
         var memberIds = await repository.SoftDeleteAsync(chatId, currentUserId, timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
         if (memberIds is null) return false;
         await realtimeNotifier.ChatDeletedAsync(chatId, memberIds, cancellationToken);

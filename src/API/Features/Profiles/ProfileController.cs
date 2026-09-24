@@ -29,6 +29,15 @@ public sealed class ProfileController(IProfileService profileService) : Controll
             : Ok(Result.Success(profile));
     }
 
+    [HttpPut("script-preference")]
+    public async Task<IActionResult> UpdateMyScriptPreference(UpdateScriptPreferenceRequest request, CancellationToken cancellationToken)
+    {
+        var profile = await profileService.UpdateMyScriptPreferenceAsync(GetUserId(), request, cancellationToken);
+        return profile is null
+            ? BadRequest(Result.Fail("Yozuv sozlamasini saqlab bo'lmadi."))
+            : Ok(Result.Success(profile));
+    }
+
     [HttpPost("photo")]
     [RequestSizeLimit(11 * 1024 * 1024)]
     public async Task<IActionResult> UploadMyPhoto(IFormFile? photo, CancellationToken cancellationToken)

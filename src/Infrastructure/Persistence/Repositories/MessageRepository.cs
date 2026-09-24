@@ -26,13 +26,16 @@ public sealed class MessageRepository(ChatDb db) : IMessageRepository
             .Where(message => message.ChatId == chatId)
             .ToCursorPagedResponseAsync(pagination, message => message.Id, MessageMapper.Projection(currentUserId, db.Photos), message => message.Id, cancellationToken);
 
-    public async Task<IReadOnlyList<MessageDto>> SearchAsync(int chatId, int currentUserId, string query, int limit, CancellationToken cancellationToken = default) =>
-        await db.Messages.AsNoTracking()
-            .Where(message => message.ChatId == chatId && message.ServiceAction == null && message.TextContent != null && EF.Functions.ILike(message.TextContent, $"%{query}%"))
+    public async Task<IReadOnlyList<MessageDto>> SearchAsync(int chatId, int currentUserId, string searchText, int limit, CancellationToken cancellationToken = default)
+    {
+        var pattern = $"%{EscapeLikePattern(searchText)}%";
+        return await db.Messages.AsNoTracking()
+            .Where(message => message.ChatId == chatId && message.ServiceAction == null && message.SearchText != null && EF.Functions.ILike(message.SearchText, pattern, LikeEscapeCharacter))
             .OrderByDescending(message => message.Id)
             .Take(limit)
             .Select(MessageMapper.Projection(currentUserId, db.Photos))
             .ToListAsync(cancellationToken);
+    }
 
     public async Task<IReadOnlyList<MessageDto>> GetContextAsync(int chatId, int currentUserId, int messageId, CancellationToken cancellationToken = default)
     {
@@ -108,4 +111,11 @@ public sealed class MessageRepository(ChatDb db) : IMessageRepository
     }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) => db.SaveChangesAsync(cancellationToken);
+
+    private const string LikeEscapeCharacter = "\\";
+
+    private static string EscapeLikePattern(string value) =>
+        value.Replace(LikeEscapeCharacter, LikeEscapeCharacter + LikeEscapeCharacter)
+            .Replace("%", LikeEscapeCharacter + "%")
+            .Replace("_", LikeEscapeCharacter + "_");
 }

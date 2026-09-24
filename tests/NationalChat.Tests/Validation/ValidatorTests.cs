@@ -2,6 +2,8 @@ using Application.DataTransferObjects.Pagination;
 using Application.Features.Groups;
 using Application.Features.Groups.DataTransferObjects.Requests;
 using Application.Features.Groups.Validators;
+using Application.Features.Profiles.DataTransferObjects.Requests;
+using Application.Features.Profiles.Validators;
 using Domain.Entities;
 
 namespace NationalChat.Tests.Validation;
@@ -47,5 +49,16 @@ public sealed class ValidatorTests
     public void UpdateRole_OnlyMemberOrAdmin(ChatMemberRole role, bool expected)
     {
         Assert.Equal(expected, new UpdateGroupMemberRoleRequestValidator().Validate(new UpdateGroupMemberRoleRequest(role)).IsValid);
+    }
+
+    [Theory]
+    [InlineData(ScriptPreference.Original, true)]
+    [InlineData(ScriptPreference.Latin, true)]
+    [InlineData(ScriptPreference.Cyrillic, true)]
+    [InlineData((ScriptPreference)0, false)]
+    [InlineData((ScriptPreference)4, false)]
+    public void UpdateScriptPreference_OnlyKnownScripts(ScriptPreference preference, bool expected)
+    {
+        Assert.Equal(expected, new UpdateScriptPreferenceRequestValidator().Validate(new UpdateScriptPreferenceRequest(preference)).IsValid);
     }
 }

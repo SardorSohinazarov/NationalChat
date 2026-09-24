@@ -14,6 +14,7 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
 
         builder.HasKey(x => x.Id);
         builder.Property(x => x.TextContent).HasColumnType("TEXT");
+        builder.Property(x => x.SearchText).HasColumnType("TEXT");
         builder.Property(x => x.SentAt).IsRequired();
         builder.Property(x => x.EditedAt);
         builder.Property(x => x.DeletedAt);

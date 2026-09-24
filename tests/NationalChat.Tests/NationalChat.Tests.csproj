@@ -25,6 +25,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Text\transliteration-cases.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 

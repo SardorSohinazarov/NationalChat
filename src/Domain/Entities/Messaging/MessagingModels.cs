@@ -8,6 +8,8 @@ public class Message
     public int ChatId { get; set; }
     public int SenderId { get; set; }
     public string? TextContent { get; set; }
+    /// <summary>Script-independent search key of <see cref="TextContent"/> (see UzbekTransliterator.NormalizeForSearch).</summary>
+    public string? SearchText { get; set; }
     public DateTime SentAt { get; set; }
     public DateTime? EditedAt { get; set; }
     public DateTime? DeletedAt { get; set; }

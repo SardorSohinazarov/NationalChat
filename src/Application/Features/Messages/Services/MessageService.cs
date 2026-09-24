@@ -4,6 +4,7 @@ using Application.Features.Messages.DataTransferObjects.Responses;
 using Application.Features.Messages.Factories;
 using Application.Features.Messages.Mappers;
 using Domain.Entities;
+using Domain.Text;
 using FluentValidation;
 
 namespace Application.Features.Messages;
@@ -39,7 +40,9 @@ public sealed class MessageService(
     {
         var validation = await messageSearchValidator.ValidateAsync(request, cancellationToken);
         if (!validation.IsValid || !await repository.IsChatMemberAsync(chatId, currentUserId, cancellationToken)) return null;
-        return await repository.SearchAsync(chatId, currentUserId, request.Query.Trim(), request.Limit, cancellationToken);
+        var searchText = UzbekTransliterator.NormalizeForSearch(request.Query);
+        if (searchText.Length == 0) return [];
+        return await repository.SearchAsync(chatId, currentUserId, searchText, request.Limit, cancellationToken);
     }
 
     public async Task<IReadOnlyList<MessageDto>?> GetContextAsync(
@@ -83,6 +86,7 @@ public sealed class MessageService(
         var message = await repository.GetOwnedMessageAsync(chatId, messageId, currentUserId, cancellationToken);
         if (message is null) return null;
         message.TextContent = request.TextContent.Trim();
+        message.SearchText = MessageFactory.BuildSearchText(message.TextContent);
         message.EditedAt = timeProvider.GetUtcNow().UtcDateTime;
         await repository.SaveChangesAsync(cancellationToken);
         var dto = (await repository.GetDtoAsync(message.Id, currentUserId, cancellationToken))!;

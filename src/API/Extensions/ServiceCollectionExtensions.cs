@@ -13,6 +13,7 @@ using Application.Features.Presence;
 using Application.Features.Stories;
 using Infrastructure.Email;
 using Infrastructure.Persistence;
+using Infrastructure.Persistence.Backfills;
 using Infrastructure.Persistence.Repositories;
 using Infrastructure.Security.Google;
 using Infrastructure.Realtime;
@@ -52,6 +53,7 @@ public static class ServiceCollectionExtensions
             .AddRealtimeMessaging(configuration, environment)
             .AddApiDocumentation()
             .AddPersistence(configuration)
+            .AddBackgroundJobs()
             .AddJwtAuthentication(jwtOptions)
             .AddApplicationServices(environment)
             .AddSecurityServices(jwtOptions, authOptions, authSecurityOptions, googleAuthOptions, antivirusOptions)
@@ -131,6 +133,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IMessageRepository, MessageRepository>();
         services.AddScoped<IMessageAttachmentRepository, MessageAttachmentRepository>();
         services.AddScoped<IStoryRepository, StoryRepository>();
+        return services;
+    }
+
+    private static IServiceCollection AddBackgroundJobs(this IServiceCollection services)
+    {
+        services.AddHostedService<SearchTextBackfill>();
         return services;
     }
 

@@ -25,6 +25,14 @@ public enum MessageServiceAction
     PhotoChanged = 6
 }
 
+/// <summary>Script a user reads messages in; messages are always stored as written.</summary>
+public enum ScriptPreference
+{
+    Original = 1,
+    Latin = 2,
+    Cyrillic = 3
+}
+
 public enum PollType
 {
     Regular = 1,

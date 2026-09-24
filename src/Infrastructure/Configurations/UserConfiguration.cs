@@ -1,5 +1,6 @@
 using Infrastructure.Persistence.Constants;
 using Domain.Entities;
+using Infrastructure.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -18,6 +19,11 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(x => x.LastName).HasMaxLength(100);
         builder.Property(x => x.Bio).HasMaxLength(255);
         builder.Property(x => x.IsProfileCompleted).IsRequired();
+        builder.Property(x => x.ScriptPreference)
+            .IsRequired()
+            .HasDefaultValue(ScriptPreference.Original)
+            .HasSentinel((ScriptPreference)0)
+            .HasCommentFromEnum();
         builder.Property(x => x.CreatedAt).IsRequired();
 
         builder.HasIndex(x => x.Email).IsUnique();

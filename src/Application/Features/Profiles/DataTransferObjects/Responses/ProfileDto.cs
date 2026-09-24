@@ -1,3 +1,5 @@
+using Domain.Entities;
+
 namespace Application.Features.Profiles.DataTransferObjects.Responses;
 
 public sealed record ProfileDto(
@@ -8,4 +10,5 @@ public sealed record ProfileDto(
     string? LastName,
     string? Bio,
     int? ProfilePhotoId,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    ScriptPreference ScriptPreference);

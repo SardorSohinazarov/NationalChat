@@ -10,7 +10,8 @@ public interface IMessageRepository
     Task<ChatMember?> FindMembershipAsync(int chatId, int userId, CancellationToken cancellationToken = default);
     Task<bool> ExistsInChatAsync(int messageId, int chatId, CancellationToken cancellationToken = default);
     Task<CursorPagedResponse<MessageDto>> GetMessagesAsync(int chatId, int currentUserId, CursorPaginationRequest pagination, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<MessageDto>> SearchAsync(int chatId, int currentUserId, string query, int limit, CancellationToken cancellationToken = default);
+    /// <param name="searchText">Query already normalized with UzbekTransliterator.NormalizeForSearch.</param>
+    Task<IReadOnlyList<MessageDto>> SearchAsync(int chatId, int currentUserId, string searchText, int limit, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<MessageDto>> GetContextAsync(int chatId, int currentUserId, int messageId, CancellationToken cancellationToken = default);
     Task<Message?> GetByIdAsync(int messageId, CancellationToken cancellationToken = default);
     Task<MessageDto?> GetDtoAsync(int messageId, int currentUserId, CancellationToken cancellationToken = default);

@@ -3,6 +3,7 @@ using Application.Features.Files;
 using Application.Features.Files.DataTransferObjects.Requests;
 using Application.Features.Messages.DataTransferObjects.Requests;
 using Application.Features.Messages.DataTransferObjects.Responses;
+using Application.Features.Messages.Factories;
 using Application.Features.Messages.Mappers;
 using Domain.Entities;
 
@@ -34,7 +35,7 @@ public sealed class MessageAttachmentService(
         {
             var file = new Domain.Entities.File { Name = stored.FileName, MimeType = stored.MimeType, SizeBytes = stored.SizeBytes, StoragePath = stored.StoragePath };
             var photo = new Photo { File = file, Width = stored.Width, Height = stored.Height };
-            var message = new Message { ChatId = chatId, SenderId = currentUserId, TextContent = request.TextContent?.Trim() ?? string.Empty, ReplyToMessageId = request.ReplyToMessageId, SentAt = timeProvider.GetUtcNow().UtcDateTime };
+            var message = MessageFactory.Create(chatId, currentUserId, request.TextContent ?? string.Empty, request.ReplyToMessageId, timeProvider.GetUtcNow().UtcDateTime);
             var attachment = new Attachment { Message = message, File = file, Type = AttachmentType.Photo };
             await repository.AddAsync(message, file, photo, attachment, cancellationToken);
             await repository.SaveChangesAsync(cancellationToken);
@@ -68,7 +69,7 @@ public sealed class MessageAttachmentService(
         {
             var file = new Domain.Entities.File { Name = stored.FileName, MimeType = stored.MimeType, SizeBytes = stored.SizeBytes, StoragePath = stored.StoragePath };
             var photo = new Photo { File = file, Width = stored.Width, Height = stored.Height };
-            var message = new Message { ChatId = chatId, SenderId = currentUserId, TextContent = request.TextContent?.Trim() ?? string.Empty, ReplyToMessageId = request.ReplyToMessageId, SentAt = timeProvider.GetUtcNow().UtcDateTime };
+            var message = MessageFactory.Create(chatId, currentUserId, request.TextContent ?? string.Empty, request.ReplyToMessageId, timeProvider.GetUtcNow().UtcDateTime);
             var attachment = new Attachment { Message = message, File = file, Type = AttachmentType.Video };
             await repository.AddAsync(message, file, photo, attachment, cancellationToken);
             await repository.SaveChangesAsync(cancellationToken);
@@ -97,7 +98,7 @@ public sealed class MessageAttachmentService(
         try
         {
             var file = new Domain.Entities.File { Name = stored.FileName, MimeType = stored.MimeType, SizeBytes = stored.SizeBytes, StoragePath = stored.StoragePath };
-            var message = new Message { ChatId = chatId, SenderId = currentUserId, TextContent = request.TextContent?.Trim() ?? string.Empty, ReplyToMessageId = request.ReplyToMessageId, SentAt = timeProvider.GetUtcNow().UtcDateTime };
+            var message = MessageFactory.Create(chatId, currentUserId, request.TextContent ?? string.Empty, request.ReplyToMessageId, timeProvider.GetUtcNow().UtcDateTime);
             var attachment = new Attachment { Message = message, File = file, Type = AttachmentType.File };
             await repository.AddFileAsync(message, file, attachment, cancellationToken);
             await repository.SaveChangesAsync(cancellationToken);

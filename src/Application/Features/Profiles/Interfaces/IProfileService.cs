@@ -8,6 +8,7 @@ public interface IProfileService
 {
     Task<ProfileDto?> GetMyProfileAsync(int userId, CancellationToken cancellationToken = default);
     Task<ProfileDto?> UpdateMyProfileAsync(int userId, UpdateProfileRequest request, CancellationToken cancellationToken = default);
+    Task<ProfileDto?> UpdateMyScriptPreferenceAsync(int userId, UpdateScriptPreferenceRequest request, CancellationToken cancellationToken = default);
     Task<ProfilePhotoUpdateResult> UpdateMyPhotoAsync(int userId, StoreImageRequest request, CancellationToken cancellationToken = default);
     Task<ProfilePhotoContent?> GetPhotoAsync(int photoId, bool original = false, CancellationToken cancellationToken = default);
 }

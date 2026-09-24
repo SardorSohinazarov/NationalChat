@@ -12,6 +12,7 @@ namespace Application.Features.Profiles;
 public sealed class ProfileService(
     IProfileRepository store,
     IValidator<UpdateProfileRequest> updateProfileValidator,
+    IValidator<UpdateScriptPreferenceRequest> updateScriptPreferenceValidator,
     IFileService fileService,
     IChatRealtimeNotifier realtimeNotifier) : IProfileService
 {
@@ -41,6 +42,19 @@ public sealed class ProfileService(
         user.FirstName = request.FirstName.Trim();
         user.LastName = string.IsNullOrWhiteSpace(request.LastName) ? null : request.LastName.Trim();
         user.Bio = string.IsNullOrWhiteSpace(request.Bio) ? null : request.Bio.Trim()[..Math.Min(request.Bio.Trim().Length, 255)];
+        await store.SaveChangesAsync(cancellationToken);
+        return ProfileMapper.ToDto(user);
+    }
+
+    public async Task<ProfileDto?> UpdateMyScriptPreferenceAsync(int userId, UpdateScriptPreferenceRequest request, CancellationToken cancellationToken = default)
+    {
+        var validation = await updateScriptPreferenceValidator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid) return null;
+
+        var user = await store.GetUserAsync(userId, cancellationToken);
+        if (user is null) return null;
+
+        user.ScriptPreference = request.ScriptPreference;
         await store.SaveChangesAsync(cancellationToken);
         return ProfileMapper.ToDto(user);
     }

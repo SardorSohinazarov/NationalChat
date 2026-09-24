@@ -10,6 +10,7 @@ public class User
     public string? Bio { get; set; }
     public int? ProfilePhotoId { get; set; }
     public bool IsProfileCompleted { get; set; }
+    public ScriptPreference ScriptPreference { get; set; } = ScriptPreference.Original;
     public DateTime CreatedAt { get; set; }
 
     public Photo? ProfilePhoto { get; set; }

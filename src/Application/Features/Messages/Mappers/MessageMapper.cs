@@ -11,9 +11,9 @@ public static class MessageMapper
     public static Expression<Func<Message, MessageDto>> Projection(int currentUserId, IQueryable<Photo> photos) => message =>
         new(message.Id, message.ChatId, message.TextContent!, message.SentAt, message.EditedAt, message.ReplyToMessageId,
             message.ReplyToMessage == null ? null : new MessageReplyDto(message.ReplyToMessage.Id, message.ReplyToMessage.TextContent!, new MessageSenderDto(message.ReplyToMessage.Sender.Id, message.ReplyToMessage.Sender.Username, message.ReplyToMessage.Sender.FirstName, message.ReplyToMessage.Sender.LastName, message.ReplyToMessage.Sender.ProfilePhotoId,
-                message.ReplyToMessage.Sender.OrganizationMembership == null ? null : new OrganizationBadgeDto(message.ReplyToMessage.Sender.OrganizationMembership.Organization.Id, message.ReplyToMessage.Sender.OrganizationMembership.Organization.ShortName))),
+                message.ReplyToMessage.Sender.OrganizationMembership == null ? null : new OrganizationBadgeDto(message.ReplyToMessage.Sender.OrganizationMembership.Organization.Id, message.ReplyToMessage.Sender.OrganizationMembership.Organization.Domain))),
             new MessageSenderDto(message.Sender.Id, message.Sender.Username, message.Sender.FirstName, message.Sender.LastName, message.Sender.ProfilePhotoId,
-                message.Sender.OrganizationMembership == null ? null : new OrganizationBadgeDto(message.Sender.OrganizationMembership.Organization.Id, message.Sender.OrganizationMembership.Organization.ShortName)),
+                message.Sender.OrganizationMembership == null ? null : new OrganizationBadgeDto(message.Sender.OrganizationMembership.Organization.Id, message.Sender.OrganizationMembership.Organization.Domain)),
             message.SenderId == currentUserId && message.Views.Any(view => view.UserId != currentUserId),
             message.Attachments.Select(attachment => new MessageAttachmentDto(attachment.FileId, (int)attachment.Type, attachment.File.Name, attachment.File.MimeType, attachment.File.SizeBytes,
                 attachment.Type == AttachmentType.Photo || attachment.Type == AttachmentType.Video ? photos.Where(photo => photo.FileId == attachment.FileId).Select(photo => photo.Width).FirstOrDefault() : 0,

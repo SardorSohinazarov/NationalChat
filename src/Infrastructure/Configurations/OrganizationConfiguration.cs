@@ -13,7 +13,6 @@ public class OrganizationConfiguration : IEntityTypeConfiguration<Organization>
 
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Domain).IsRequired().HasMaxLength(253);
-        builder.Property(x => x.ShortName).IsRequired().HasMaxLength(32);
         builder.Property(x => x.CreatedAt).IsRequired();
         builder.HasIndex(x => x.Domain).IsUnique();
 

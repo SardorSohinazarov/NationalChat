@@ -33,15 +33,15 @@ public sealed class OrganizationMembershipService(
         var member = OrganizationFactory.CreateMember(organization.Id, user.Id, role, now);
         if (!await repository.TryAddMemberAsync(member, cancellationToken)) return;
 
-        var autoJoinChatIds = await repository.GetAutoJoinGroupChatIdsAsync(organization.Id, cancellationToken);
-        if (autoJoinChatIds.Count == 0)
+        var groupChatIds = await repository.GetOrganizationGroupChatIdsAsync(organization.Id, cancellationToken);
+        if (groupChatIds.Count == 0)
         {
-            // First member (or the common group was deleted): create it with this user as its owner.
+            // First member (or the group was deleted): create the "tuit.uz" group with this user as its owner.
             await groupService.CreateOrganizationGroupAsync(user.Id, cancellationToken);
             return;
         }
 
-        foreach (var chatId in autoJoinChatIds)
+        foreach (var chatId in groupChatIds)
         {
             await groupService.JoinViaOrganizationAsync(chatId, user.Id, cancellationToken);
         }

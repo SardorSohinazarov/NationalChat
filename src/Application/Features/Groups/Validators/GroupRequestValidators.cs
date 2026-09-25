@@ -15,13 +15,8 @@ public sealed class CreateGroupRequestValidator : AbstractValidator<CreateGroupR
             .MaximumLength(GroupLimits.DescriptionMaxLength).WithMessage($"Tavsif {GroupLimits.DescriptionMaxLength} belgidan oshmasligi kerak.");
         RuleFor(x => x.MemberIds)
             .NotNull().WithMessage("Kamida bitta a'zo tanlanishi kerak.")
-            .Must((request, ids) => ids is null || ids.Count > 0 || request.AutoJoin).WithMessage("Kamida bitta a'zo tanlanishi kerak.")
-            .Must((request, ids) => ids is null || ids.Count < GroupLimits.MaxMembersFor(request.OrganizationOnly))
-            .WithMessage(request => $"A'zolar soni {GroupLimits.MaxMembersFor(request.OrganizationOnly) - 1} tadan oshmasligi kerak.");
+            .Must(ids => ids is { Count: > 0 and < GroupLimits.MaxMembers }).WithMessage($"A'zolar soni 1 dan {GroupLimits.MaxMembers - 1} gacha bo'lishi kerak.");
         RuleForEach(x => x.MemberIds).GreaterThan(0);
-        RuleFor(x => x.AutoJoin)
-            .Must((request, autoJoin) => !autoJoin || request.OrganizationOnly)
-            .WithMessage("Avtomatik qo'shish faqat tashkilot guruhida yoqilishi mumkin.");
     }
 }
 

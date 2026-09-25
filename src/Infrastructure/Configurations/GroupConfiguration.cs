@@ -15,9 +15,9 @@ public class GroupConfiguration : IEntityTypeConfiguration<Group>
         builder.Property(x => x.Title).IsRequired().HasMaxLength(255);
         builder.Property(x => x.Description).HasColumnType("TEXT");
         builder.Property(x => x.InviteLink).HasMaxLength(255);
-        builder.Property(x => x.AutoJoin).IsRequired();
         builder.HasIndex(x => x.ChatId).IsUnique();
-        builder.HasIndex(x => new { x.OrganizationId, x.AutoJoin });
+        builder.HasIndex(x => x.InviteLink).IsUnique();
+        builder.HasIndex(x => x.OrganizationId);
 
         builder.HasOne(x => x.Organization)
             .WithMany()

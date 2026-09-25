@@ -7,9 +7,8 @@ namespace Infrastructure.Persistence.Repositories;
 
 public sealed class UserDiscoveryRepository(ChatDb db) : IUserDiscoveryRepository
 {
-    public async Task<IReadOnlyList<UserSearchDto>> SearchAsync(int currentUserId, string query, int limit, int? organizationId, CancellationToken cancellationToken = default) =>
+    public async Task<IReadOnlyList<UserSearchDto>> SearchAsync(int currentUserId, string query, int limit, CancellationToken cancellationToken = default) =>
         await db.Users.AsNoTracking()
-            .Where(x => organizationId == null || (x.OrganizationMembership != null && x.OrganizationMembership.OrganizationId == organizationId))
             .Where(x => x.Id != currentUserId && x.IsProfileCompleted &&
                 (EF.Functions.ILike(x.Username, $"{query}%") ||
                  EF.Functions.ILike(x.FirstName, $"{query}%") ||

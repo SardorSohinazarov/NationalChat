@@ -41,11 +41,11 @@ public sealed class OrganizationMembershipServiceTests
         return user;
     }
 
-    private Group CommonGroup(Organization organization) =>
-        Assert.Single(_groups.Groups, group => group.OrganizationId == organization.Id && group.AutoJoin);
+    private Group OrganizationGroup(Organization organization) =>
+        Assert.Single(_groups.Groups, group => group.OrganizationId == organization.Id);
 
     [Fact]
-    public async Task FirstUserFromDomain_CreatesOrganizationAndCommonGroupAndIsAdmin()
+    public async Task FirstUserFromDomain_CreatesOrganizationAndGroupAndIsAdmin()
     {
         var ali = AddUser(1, "ali@tuit.uz");
 
@@ -53,32 +53,47 @@ public sealed class OrganizationMembershipServiceTests
 
         var organization = Assert.Single(_organizations.Organizations);
         Assert.Equal("tuit.uz", organization.Domain);
-        Assert.Equal("TUIT", organization.ShortName);
         Assert.Equal(OrganizationRole.Admin, Assert.Single(_organizations.Members).Role);
 
-        var group = CommonGroup(organization);
-        Assert.Equal("TUIT jamoasi", group.Title);
+        var group = OrganizationGroup(organization);
+        Assert.Equal("tuit.uz", group.Title);
+        Assert.Null(group.InviteLink);
         var owner = Assert.Single(group.Chat.Members);
         Assert.Equal((ali.Id, ChatMemberRole.Creator), (owner.UserId, owner.Role));
         Assert.Equal(MessageServiceAction.GroupCreated, Assert.Single(group.Chat.Messages).ServiceAction);
     }
 
     [Fact]
-    public async Task NextUsers_JoinAsMembersWithServiceMessage_IncludingSubdomains()
+    public async Task NextUserFromSameDomain_JoinsAsMemberWithServiceMessage()
+    {
+        var ali = AddUser(1, "ali@tuit.uz");
+        var nodira = AddUser(2, "nodira@tuit.uz");
+        await _service.EnsureMembershipAsync(ali);
+
+        await _service.EnsureMembershipAsync(nodira);
+
+        Assert.Single(_organizations.Organizations);
+        Assert.Equal(OrganizationRole.Member, _organizations.Members.Single(m => m.UserId == nodira.Id).Role);
+        var group = Assert.Single(_groups.Groups);
+        Assert.Contains(group.Chat.Members, member => member.UserId == nodira.Id && member.Role == ChatMemberRole.Member);
+        var joined = group.Chat.Messages.Last();
+        Assert.Equal(MessageServiceAction.MemberJoinedViaOrganization, joined.ServiceAction);
+        Assert.Equal("tuit.uz", joined.TextContent);
+    }
+
+    [Fact]
+    public async Task Subdomain_IsSeparateOrganizationWithItsOwnGroup()
     {
         var ali = AddUser(1, "ali@tuit.uz");
         var vali = AddUser(2, "vali@student.tuit.uz");
-        await _service.EnsureMembershipAsync(ali);
 
+        await _service.EnsureMembershipAsync(ali);
         await _service.EnsureMembershipAsync(vali);
 
-        Assert.Single(_organizations.Organizations);
-        Assert.Equal(OrganizationRole.Member, _organizations.Members.Single(m => m.UserId == vali.Id).Role);
-        var group = Assert.Single(_groups.Groups);
-        Assert.Contains(group.Chat.Members, member => member.UserId == vali.Id && member.Role == ChatMemberRole.Member);
-        var joined = group.Chat.Messages.Last();
-        Assert.Equal(MessageServiceAction.MemberJoinedViaOrganization, joined.ServiceAction);
-        Assert.Equal("TUIT", joined.TextContent);
+        Assert.Equal(["tuit.uz", "student.tuit.uz"], _organizations.Organizations.Select(o => o.Domain));
+        Assert.Equal(["tuit.uz", "student.tuit.uz"], _groups.Groups.Select(g => g.Title));
+        Assert.All(_organizations.Members, member => Assert.Equal(OrganizationRole.Admin, member.Role));
+        Assert.All(_groups.Groups, group => Assert.Single(group.Chat.Members));
     }
 
     [Fact]
@@ -88,7 +103,7 @@ public sealed class OrganizationMembershipServiceTests
         await _service.EnsureMembershipAsync(AddUser(2, "hr@rtm.uz"));
 
         Assert.Equal(["tuit.uz", "rtm.uz"], _organizations.Organizations.Select(o => o.Domain));
-        Assert.Equal(2, _groups.Groups.Count);
+        Assert.Equal(["tuit.uz", "rtm.uz"], _groups.Groups.Select(g => g.Title));
         Assert.All(_organizations.Members, member => Assert.Equal(OrganizationRole.Admin, member.Role));
     }
 
@@ -126,7 +141,7 @@ public sealed class OrganizationMembershipServiceTests
     }
 
     [Fact]
-    public async Task DeletedCommonGroup_IsRecreatedWithExistingMembers()
+    public async Task DeletedGroup_IsRecreatedWithExistingMembers()
     {
         var ali = AddUser(1, "ali@tuit.uz");
         await _service.EnsureMembershipAsync(ali);

@@ -20,6 +20,9 @@ namespace Infrastructure.Migrations
                   AND duplicate.""UserId"" = original.""UserId""
                   AND duplicate.""Id"" > original.""Id"";");
 
+            // Invite links were never issued before; clear any stray values so the new unique index can be built.
+            migrationBuilder.Sql(@"UPDATE chat.groups SET ""InviteLink"" = NULL;");
+
             migrationBuilder.DropIndex(
                 name: "IX_chat_members_ChatId",
                 schema: "chat",
@@ -34,19 +37,11 @@ namespace Infrastructure.Migrations
                 table: "messages",
                 type: "integer",
                 nullable: true,
-                comment: "1 = GroupCreated, 2 = MembersAdded, 3 = MemberRemoved, 4 = MemberLeft, 5 = TitleChanged, 6 = PhotoChanged, 7 = MemberJoinedViaOrganization",
+                comment: "1 = GroupCreated, 2 = MembersAdded, 3 = MemberRemoved, 4 = MemberLeft, 5 = TitleChanged, 6 = PhotoChanged, 7 = MemberJoinedViaOrganization, 8 = MemberJoinedViaInvite",
                 oldClrType: typeof(int),
                 oldType: "integer",
                 oldNullable: true,
                 oldComment: "1 = GroupCreated, 2 = MembersAdded, 3 = MemberRemoved, 4 = MemberLeft, 5 = TitleChanged, 6 = PhotoChanged");
-
-            migrationBuilder.AddColumn<bool>(
-                name: "AutoJoin",
-                schema: "chat",
-                table: "groups",
-                type: "boolean",
-                nullable: false,
-                defaultValue: false);
 
             migrationBuilder.AddColumn<int>(
                 name: "OrganizationId",
@@ -63,7 +58,6 @@ namespace Infrastructure.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Domain = table.Column<string>(type: "character varying(253)", maxLength: 253, nullable: false),
-                    ShortName = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
@@ -103,10 +97,17 @@ namespace Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_groups_OrganizationId_AutoJoin",
+                name: "IX_groups_InviteLink",
                 schema: "chat",
                 table: "groups",
-                columns: new[] { "OrganizationId", "AutoJoin" });
+                column: "InviteLink",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_groups_OrganizationId",
+                schema: "chat",
+                table: "groups",
+                column: "OrganizationId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_chat_members_ChatId_UserId",
@@ -163,7 +164,12 @@ namespace Infrastructure.Migrations
                 schema: "organizations");
 
             migrationBuilder.DropIndex(
-                name: "IX_groups_OrganizationId_AutoJoin",
+                name: "IX_groups_InviteLink",
+                schema: "chat",
+                table: "groups");
+
+            migrationBuilder.DropIndex(
+                name: "IX_groups_OrganizationId",
                 schema: "chat",
                 table: "groups");
 
@@ -171,11 +177,6 @@ namespace Infrastructure.Migrations
                 name: "IX_chat_members_ChatId_UserId",
                 schema: "chat",
                 table: "chat_members");
-
-            migrationBuilder.DropColumn(
-                name: "AutoJoin",
-                schema: "chat",
-                table: "groups");
 
             migrationBuilder.DropColumn(
                 name: "OrganizationId",
@@ -192,7 +193,7 @@ namespace Infrastructure.Migrations
                 oldClrType: typeof(int),
                 oldType: "integer",
                 oldNullable: true,
-                oldComment: "1 = GroupCreated, 2 = MembersAdded, 3 = MemberRemoved, 4 = MemberLeft, 5 = TitleChanged, 6 = PhotoChanged, 7 = MemberJoinedViaOrganization");
+                oldComment: "1 = GroupCreated, 2 = MembersAdded, 3 = MemberRemoved, 4 = MemberLeft, 5 = TitleChanged, 6 = PhotoChanged, 7 = MemberJoinedViaOrganization, 8 = MemberJoinedViaInvite");
 
             migrationBuilder.CreateIndex(
                 name: "IX_chat_members_ChatId",

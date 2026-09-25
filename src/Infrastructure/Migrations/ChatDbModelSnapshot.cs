@@ -454,9 +454,6 @@ namespace Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<bool>("AutoJoin")
-                        .HasColumnType("boolean");
-
                     b.Property<int>("ChatId")
                         .HasColumnType("integer");
 
@@ -488,9 +485,12 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("CreatorId");
 
-                    b.HasIndex("PhotoId");
+                    b.HasIndex("InviteLink")
+                        .IsUnique();
 
-                    b.HasIndex("OrganizationId", "AutoJoin");
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("PhotoId");
 
                     b.ToTable("groups", "chat");
                 });
@@ -526,7 +526,7 @@ namespace Infrastructure.Migrations
 
                     b.Property<int?>("ServiceAction")
                         .HasColumnType("integer")
-                        .HasComment("1 = GroupCreated, 2 = MembersAdded, 3 = MemberRemoved, 4 = MemberLeft, 5 = TitleChanged, 6 = PhotoChanged, 7 = MemberJoinedViaOrganization");
+                        .HasComment("1 = GroupCreated, 2 = MembersAdded, 3 = MemberRemoved, 4 = MemberLeft, 5 = TitleChanged, 6 = PhotoChanged, 7 = MemberJoinedViaOrganization, 8 = MemberJoinedViaInvite");
 
                     b.Property<string>("TextContent")
                         .HasColumnType("TEXT");
@@ -583,11 +583,6 @@ namespace Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(253)
                         .HasColumnType("character varying(253)");
-
-                    b.Property<string>("ShortName")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
 
                     b.HasKey("Id");
 

@@ -5,9 +5,12 @@
 
 Hech narsa sozlanmaydi. Foydalanuvchi pochtasini tasdiqlab kirganda (OTP yoki Google):
 
-- pochta umumiy xizmatga tegishli bo'lmasa (gmail.com, mail.ru, umail.uz va boshqalar), uning domeni tashkilot
-  hisoblanadi: `ali@tuit.uz` va `vali@student.tuit.uz` → `tuit.uz`, belgisi "TUIT ✓";
-- shu domendan birinchi kirgan odam tashkilot yaratilib, uning **admini** bo'ladi va "TUIT jamoasi" guruhi
-  avtomatik ochiladi (u guruh egasi);
-- keyin kirganlar shu tashkilotga va uning avtomatik guruhlariga o'zi qo'shiladi;
-- tashkilot guruhiga boshqa domendagi odamni qo'shib bo'lmaydi.
+- `@` belgisidan keyingi butun domen tashkilot hisoblanadi: `ali@tuit.uz` → `tuit.uz`,
+  `vali@student.tuit.uz` → `student.tuit.uz` (alohida tashkilot). Umumiy pochta xizmatlari (gmail.com,
+  mail.ru, umail.uz va boshqalar) tashkilot emas;
+- shu domendan birinchi kirgan odam tashkilot **admini** bo'ladi va nomi domen bilan bir xil bo'lgan
+  (`tuit.uz`) **yopiq guruh** ochiladi, uning egasi — shu odam;
+- keyin shu domendan kirganlar guruhga o'zi qo'shiladi;
+- boshqalar guruhni topa olmaydi va o'zi qo'shila olmaydi: ularni faqat admin qo'shadi yoki ular admin
+  bergan **taklif havolasi** orqali kiradi (`POST /api/groups/{chatId}/invite-link`,
+  `POST /api/groups/invites/{token}/join`). Havola qayta yaratilsa yoki o'chirilsa, eskisi ishlamaydi.

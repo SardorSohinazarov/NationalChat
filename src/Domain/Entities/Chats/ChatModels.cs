@@ -31,13 +31,15 @@ public class Group
     public int ChatId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
+    /// <summary>Secret token of the group's invite link; null when there is no active link.</summary>
     public string? InviteLink { get; set; }
     public int CreatorId { get; set; }
     public int? PhotoId { get; set; }
-    /// <summary>Set for organization-only groups: only verified members of this organization can join.</summary>
+    /// <summary>
+    /// Set for an organization's own group ("tuit.uz"): its verified members join automatically. The group is
+    /// private — others get in only when an admin adds them or through the invite link.
+    /// </summary>
     public int? OrganizationId { get; set; }
-    /// <summary>New verified members of <see cref="OrganizationId"/> are added automatically.</summary>
-    public bool AutoJoin { get; set; }
 
     public Chat Chat { get; set; }
     public User Creator { get; set; }

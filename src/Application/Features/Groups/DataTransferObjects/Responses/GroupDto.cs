@@ -25,4 +25,7 @@ public sealed record GroupDto(
     DateTime CreatedAt,
     IReadOnlyList<GroupMemberDto> Members,
     OrganizationBadgeDto? Organization,
-    bool AutoJoin);
+    string? InviteToken);
+
+/// <summary>What someone holding an invite link sees before joining; no member list.</summary>
+public sealed record GroupInvitePreviewDto(int ChatId, string Title, string? Description, int MemberCount, bool IsMember);

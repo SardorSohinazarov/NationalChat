@@ -26,6 +26,9 @@ public sealed class FakeGroupRepository : IGroupRepository
     public Task<Group?> GetGroupAsync(int chatId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Groups.FirstOrDefault(g => g.ChatId == chatId && g.Chat.DeletedAt == null));
 
+    public Task<Group?> GetGroupByInviteTokenAsync(string token, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Groups.FirstOrDefault(g => g.InviteLink == token && g.Chat.DeletedAt == null));
+
     public Task<IReadOnlyList<User>> FindUsersAsync(IReadOnlyCollection<int> userIds, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<User>>(Users.Where(u => userIds.Contains(u.Id) && u.IsProfileCompleted).ToList());
 
@@ -112,12 +115,12 @@ public sealed class FakeOrganizationRepository(FakeGroupRepository groups) : IOr
         return Task.FromResult(true);
     }
 
-    public Task<IReadOnlyList<int>> GetAutoJoinGroupChatIdsAsync(int organizationId, CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<int>>(groups.Groups.Where(g => g.OrganizationId == organizationId && g.AutoJoin).Select(g => g.ChatId).ToList());
+    public Task<IReadOnlyList<int>> GetOrganizationGroupChatIdsAsync(int organizationId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<int>>(groups.Groups.Where(g => g.OrganizationId == organizationId && g.Chat.DeletedAt == null).Select(g => g.ChatId).ToList());
 
     public Task<MyOrganizationDto?> GetMyOrganizationAsync(int userId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Members.Where(m => m.UserId == userId)
-            .Select(m => (MyOrganizationDto?)new MyOrganizationDto(m.Organization.Id, m.Organization.Domain, m.Organization.ShortName, m.Role))
+            .Select(m => (MyOrganizationDto?)new MyOrganizationDto(m.Organization.Id, m.Organization.Domain, m.Role))
             .FirstOrDefault());
 }
 
@@ -140,7 +143,6 @@ public static class TestData
     {
         Id = id,
         Domain = domain,
-        ShortName = domain.Split('.')[0].ToUpperInvariant(),
         CreatedAt = Start,
     };
 

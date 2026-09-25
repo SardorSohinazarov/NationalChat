@@ -15,8 +15,7 @@ public static class GroupFactory
         User creator,
         IReadOnlyCollection<User> members,
         DateTime createdAt,
-        Organization? organization = null,
-        bool autoJoin = false)
+        Organization? organization = null)
     {
         var chat = new Chat
         {
@@ -37,8 +36,7 @@ public static class GroupFactory
             CreatorId = creator.Id,
             Creator = creator,
             OrganizationId = organization?.Id,
-            Organization = organization,
-            AutoJoin = organization is not null && autoJoin
+            Organization = organization
         };
         chat.Groups.Add(group);
         return group;

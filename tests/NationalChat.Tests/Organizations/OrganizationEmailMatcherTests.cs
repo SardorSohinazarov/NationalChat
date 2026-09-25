@@ -7,13 +7,12 @@ public sealed class OrganizationEmailMatcherTests
     [Theory]
     [InlineData("ali@tuit.uz", "tuit.uz")]
     [InlineData("Ali@TUIT.UZ.", "tuit.uz")]
-    [InlineData("vali@student.tuit.uz", "tuit.uz")]
+    [InlineData("vali@student.tuit.uz", "student.tuit.uz")]
     [InlineData("hr@rtm.uz", "rtm.uz")]
-    [InlineData("dekan@urdu.edu.uz", "urdu.edu.uz")]
-    [InlineData("a@mail.company.co.uk", "company.co.uk")]
+    [InlineData("\"odd@name\"@tuit.uz", "tuit.uz")]
     [InlineData("ali@evil-tuit.uz", "evil-tuit.uz")]
-    [InlineData("ali@tuit.uz.evil.com", "evil.com")]
-    public void OrganizationDomainOf_UsesRegistrableDomain(string email, string expected)
+    [InlineData("ali@tuit.uz.evil.com", "tuit.uz.evil.com")]
+    public void OrganizationDomainOf_IsEverythingAfterLastAt(string email, string expected)
     {
         Assert.Equal(expected, OrganizationEmailMatcher.OrganizationDomainOf(email));
     }
@@ -31,15 +30,6 @@ public sealed class OrganizationEmailMatcherTests
     public void OrganizationDomainOf_PublicOrInvalid_IsNull(string email)
     {
         Assert.Null(OrganizationEmailMatcher.OrganizationDomainOf(email));
-    }
-
-    [Theory]
-    [InlineData("tuit.uz", "TUIT")]
-    [InlineData("rtm.uz", "RTM")]
-    [InlineData("urdu.edu.uz", "URDU")]
-    public void ShortNameFor_IsFirstLabelInUpperCase(string domain, string expected)
-    {
-        Assert.Equal(expected, OrganizationEmailMatcher.ShortNameFor(domain));
     }
 
     [Theory]

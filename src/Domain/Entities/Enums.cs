@@ -23,7 +23,8 @@ public enum MessageServiceAction
     MemberLeft = 4,
     TitleChanged = 5,
     PhotoChanged = 6,
-    MemberJoinedViaOrganization = 7
+    MemberJoinedViaOrganization = 7,
+    MemberJoinedViaInvite = 8
 }
 
 public enum OrganizationRole

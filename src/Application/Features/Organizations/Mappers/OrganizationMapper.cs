@@ -9,12 +9,12 @@ public static class OrganizationMapper
     /// <summary>Badge of a loaded user; null when the membership (or its organization) is not loaded or absent.</summary>
     public static OrganizationBadgeDto? ToBadge(User user) =>
         user.OrganizationMembership?.Organization is { } organization
-            ? new OrganizationBadgeDto(organization.Id, organization.ShortName)
+            ? new OrganizationBadgeDto(organization.Id, organization.Domain)
             : null;
 
     public static OrganizationBadgeDto? ToBadge(Organization? organization) =>
-        organization is null ? null : new OrganizationBadgeDto(organization.Id, organization.ShortName);
+        organization is null ? null : new OrganizationBadgeDto(organization.Id, organization.Domain);
 
     public static Expression<Func<OrganizationMember, MyOrganizationDto>> MyOrganizationProjection => member =>
-        new(member.Organization.Id, member.Organization.Domain, member.Organization.ShortName, member.Role);
+        new(member.Organization.Id, member.Organization.Domain, member.Role);
 }

@@ -21,9 +21,9 @@ public sealed class OrganizationRepository(ChatDb db) : IOrganizationRepository
     public Task<bool> TryAddMemberAsync(OrganizationMember member, CancellationToken cancellationToken = default) =>
         TryAddAsync(member, cancellationToken);
 
-    public async Task<IReadOnlyList<int>> GetAutoJoinGroupChatIdsAsync(int organizationId, CancellationToken cancellationToken = default) =>
+    public async Task<IReadOnlyList<int>> GetOrganizationGroupChatIdsAsync(int organizationId, CancellationToken cancellationToken = default) =>
         await db.Groups.AsNoTracking()
-            .Where(group => group.OrganizationId == organizationId && group.AutoJoin && group.Chat.DeletedAt == null)
+            .Where(group => group.OrganizationId == organizationId && group.Chat.DeletedAt == null)
             .OrderBy(group => group.Id)
             .Select(group => group.ChatId)
             .ToListAsync(cancellationToken);

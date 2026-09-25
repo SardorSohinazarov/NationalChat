@@ -15,8 +15,15 @@ public interface IGroupService
     Task<GroupResult> UpdateMemberRoleAsync(int currentUserId, int chatId, int userId, UpdateGroupMemberRoleRequest request, CancellationToken cancellationToken = default);
     Task<GroupLeaveResult> LeaveAsync(int currentUserId, int chatId, CancellationToken cancellationToken = default);
 
+    /// <summary>Creates (or replaces, revoking the old one) the group's invite link. Admins and the owner only.</summary>
+    Task<GroupResult> CreateInviteLinkAsync(int currentUserId, int chatId, CancellationToken cancellationToken = default);
+    Task<GroupResult> RevokeInviteLinkAsync(int currentUserId, int chatId, CancellationToken cancellationToken = default);
+    Task<GroupInvitePreviewDto?> GetInvitePreviewAsync(int currentUserId, string token, CancellationToken cancellationToken = default);
+    /// <summary>Anyone holding a valid invite link may join; this is the only way in besides being added by an admin.</summary>
+    Task<GroupResult> JoinByInviteAsync(int currentUserId, string token, CancellationToken cancellationToken = default);
+
     /// <summary>
-    /// Creates the organization's common auto-join group ("TUIT jamoasi") owned by <paramref name="userId"/>,
+    /// Creates the organization's private group (titled with its domain, e.g. "tuit.uz") owned by <paramref name="userId"/>,
     /// together with every verified member already known; false when the user has no organization.
     /// </summary>
     Task<bool> CreateOrganizationGroupAsync(int userId, CancellationToken cancellationToken = default);

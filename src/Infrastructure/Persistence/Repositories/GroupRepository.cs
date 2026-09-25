@@ -7,6 +7,12 @@ namespace Infrastructure.Persistence.Repositories;
 public sealed class GroupRepository(ChatDb db) : IGroupRepository
 {
     public Task<Group?> GetGroupAsync(int chatId, CancellationToken cancellationToken = default) =>
+        LoadGroups().FirstOrDefaultAsync(group => group.ChatId == chatId, cancellationToken);
+
+    public Task<Group?> GetGroupByInviteTokenAsync(string token, CancellationToken cancellationToken = default) =>
+        LoadGroups().FirstOrDefaultAsync(group => group.InviteLink == token, cancellationToken);
+
+    private IQueryable<Group> LoadGroups() =>
         db.Groups
             .Include(group => group.Chat)
                 .ThenInclude(chat => chat.Members)
@@ -21,7 +27,7 @@ public sealed class GroupRepository(ChatDb db) : IGroupRepository
             .Include(group => group.Photo)
                 .ThenInclude(photo => photo!.File)
             .AsSplitQuery()
-            .FirstOrDefaultAsync(group => group.ChatId == chatId && group.Chat.Type == ChatType.Group && group.Chat.DeletedAt == null, cancellationToken);
+            .Where(group => group.Chat.Type == ChatType.Group && group.Chat.DeletedAt == null);
 
     public async Task<IReadOnlyList<User>> FindUsersAsync(IReadOnlyCollection<int> userIds, CancellationToken cancellationToken = default) =>
         await db.Users

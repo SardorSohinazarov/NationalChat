@@ -27,6 +27,13 @@ public enum MessageServiceAction
     MemberJoinedViaInvite = 8
 }
 
+public enum SecretChatStatus
+{
+    Pending = 1,
+    Active = 2,
+    Closed = 3
+}
+
 public enum OrganizationRole
 {
     Member = 1,

@@ -23,6 +23,7 @@ public sealed class ChatHub(
     {
         var userId = GetCurrentUserId();
         await Groups.AddToGroupAsync(Context.ConnectionId, ChatHubGroups.User(userId));
+        await Groups.AddToGroupAsync(Context.ConnectionId, ChatHubGroups.Session(GetCurrentSessionId()));
 
         if (presenceTracker.AddConnection(userId, Context.ConnectionId))
         {

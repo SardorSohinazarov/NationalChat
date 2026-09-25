@@ -1,6 +1,6 @@
 # Maxfiy chatlar (E2E) — dizayn va reja
 
-> Holat: **muhokama / loyiha**. Kod hali yozilmagan. Pastdagi "Ochiq savollar" bo'limiga javob berilgach, 1-bosqichdan boshlanadi.
+> Holat: **1-bosqich (backend) tayyor.** Keyingisi 2-bosqich (klient kripto qatlami). Qarorlar 8-bo'limda, backend API shartnomasi 9-bo'limda.
 
 ## 0. Hozirgi holat
 
@@ -119,8 +119,48 @@ Kelajakda desktop yoki mobil ilova chiqsa, himoya kuchliroq bo'ladi.
 5. **Shifrlangan fayllar.**
 6. Kerak bo'lsa: Double Ratchet'ga o'tish yoki ko'p qurilmali model.
 
-## 8. Ochiq savollar (kod yozishdan oldin hal qilinadi)
+## 8. Qarorlar
 
-1. **Qurilmaga bog'langan model** (tavsiya) to'g'ri keladimi?
-2. Birinchi versiyaga **fayllar** kiradimi yoki faqat matnmi?
-3. **Protokol:** tayyor kutubxona (vodozemac/Olm) yoki MVP uchun Web Crypto'dagi oddiy hash-chain ratchet?
+1. **Model:** qurilmaga bog'langan (Telegram modeli). ✅ Tasdiqlandi.
+2. **1-versiya: faqat matn.** Fayllar keyinroq (5-bosqich). ✅ Tasdiqlandi.
+3. **Protokol:** hali ochiq. Backend unga bog'liq emas: u faqat 32 baytlik X25519 ochiq kalit va shifrlangan blobni tashiydi. 2-bosqichdan oldin hal qilinadi.
+
+## 9. Backend API (1-bosqich natijasi)
+
+Hamma endpointlar **joriy qurilma** nomidan ishlaydi: access token ichidagi `sid` (session). Har so'rovda session faolligi bazadan qayta tekshiriladi, chunki JWT logoutdan keyin ham bir necha daqiqa yaroqli bo'lib qoladi.
+
+| Endpoint | Kim | Nima qiladi |
+|---|---|---|
+| `GET /api/secret-chats` | — | Shu qurilmaga bog'langan ochiq chatlar va foydalanuvchiga kelgan kutilayotgan so'rovlar |
+| `GET /api/secret-chats/{id}` | ikki tomon | Bitta chat |
+| `POST /api/secret-chats` `{participantId, publicKey}` | tashabbuskor | So'rov (`Pending`). Chat shu qurilmaga bog'lanadi |
+| `POST /api/secret-chats/{id}/accept` `{publicKey}` | qabul qiluvchi | `Active`. Chat qabul qilgan qurilmaga bog'lanadi |
+| `POST /api/secret-chats/{id}/close` | ikki tomon | Yopish. Kutilayotgan so'rovni rad etish yoki bekor qilish ham shu |
+| `POST /api/secret-chats/{id}/messages` `{seq, ciphertext}` | bog'langan qurilma | Shifrlangan xabar yuborish |
+| `GET /api/secret-chats/{id}/messages?afterId&limit` | bog'langan qurilma | Shu qurilmaga kelgan, hali tasdiqlanmagan xabarlar (eskisidan boshlab) |
+| `POST /api/secret-chats/{id}/ack` `{upToId}` | bog'langan qurilma | `upToId`gacha bo'lgan xabarlar serverdan o'chiriladi |
+
+**Formatlar va qoidalar**
+
+- `publicKey`: standart Base64 (padding bilan), aynan 32 bayt (X25519 raw).
+- `ciphertext`: standart Base64, 1 baytdan 32 KB gacha. Server uni ochmaydi va tuzilishiga qaramaydi. Klient `iv` ni blob ichiga qo'yadi.
+- `seq`: har tomonning o'z hisoblagichi, 1 dan boshlanadi va har xabarda o'sishi shart. Kichik yoki takroriy `seq` rad etiladi (replay himoyasi). Klient uni AES-GCM `additionalData` ga `secretChatId|senderSessionId|seq` ko'rinishida qo'shadi.
+- `status` JSON'da son: `1` Pending, `2` Active, `3` Closed (API'dagi boshqa enumlar kabi).
+- `mySessionId`: chat ko'ruvchi tomonda qaysi qurilmaga bog'langan. Klient o'z `sid`i bilan solishtiradi: mos kelmasa, chat boshqa qurilmada qabul qilingan, uni yashirish kerak.
+
+**SignalR hodisalari** (`/hubs/chat`; har ulanish `session:{sid}` guruhiga ham qo'shiladi):
+
+| Hodisa | Kimga | Payload |
+|---|---|---|
+| `SecretChatRequested` | qabul qiluvchining hamma qurilmalariga | `SecretChatDto` |
+| `SecretChatAccepted` | tashabbuskor qurilmasi va qabul qiluvchining hamma qurilmalari | `SecretChatDto` (`peerPublicKey` bilan) |
+| `SecretMessageReceived` | faqat oluvchi qurilma | `SecretMessageDto` |
+| `SecretChatClosed` | ikki bog'langan qurilma (so'rov bosqichida — qabul qiluvchining hamma qurilmalari) | `{ secretChatId }` |
+
+**Avtomatik yopilish**
+
+- Logout, "boshqa qurilmalarni chiqarish" yoki bitta qurilmani chiqarish shu qurilmalardagi chatlarni darhol yopadi. Yetkazilmagan xabarlar o'chiriladi.
+- Fon ishi (`SecretChatCleanup`, har soatda) muddati tugagan sessionlarning chatlarini yopadi. 7 kundan beri javob kutayotgan so'rovlarni yopadi va 7 kundan eski yetkazilmagan blobni o'chiradi.
+- Server tarix saqlamaydi: xabar tasdiqlangach (`ack`) o'chiriladi.
+
+**Ma'lumotlar bazasi:** `Add-Secret-Chats-E2E` migratsiyasi `EncryptionKey` ustunini o'chiradi va `messaging.secret_messages` jadvalini yaratadi. Eski `secret_chats` qatorlari o'chiriladi: ularning kaliti serverda edi va bog'lanadigan qurilmasi yo'q.

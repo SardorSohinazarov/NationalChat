@@ -6,6 +6,7 @@ using Application.Features.Authentication.DataTransferObjects.Session;
 using Application.Features.Authentication.Factories;
 using Application.Features.Authentication.Mappers;
 using Application.Features.Organizations;
+using Application.Features.SecretChats;
 using FluentValidation;
 using Domain.Entities;
 
@@ -20,6 +21,7 @@ public sealed class AuthService(
     IGoogleTokenValidator googleTokenValidator,
     IEmailSender emailSender,
     IOrganizationMembershipService organizationMembership,
+    ISecretChatService secretChats,
     TimeProvider timeProvider,
     AuthOptions options,
     IValidator<RequestSignInCodeCommand> requestSignInCodeValidator,
@@ -223,6 +225,7 @@ public sealed class AuthService(
 
         session.RevokedAt = timeProvider.GetUtcNow().UtcDateTime;
         await store.SaveChangesAsync(cancellationToken);
+        await secretChats.CloseForSessionsAsync([session.Id], cancellationToken);
     }
 
     public async Task LogoutAllAsync(int userId, CancellationToken cancellationToken = default)
@@ -235,6 +238,7 @@ public sealed class AuthService(
         }
 
         await store.SaveChangesAsync(cancellationToken);
+        await secretChats.CloseForSessionsAsync(sessions.Select(session => session.Id).ToList(), cancellationToken);
     }
 
     public async Task<bool> RevokeSessionAsync(int userId, int sessionId, int currentSessionId, CancellationToken cancellationToken = default)
@@ -252,6 +256,7 @@ public sealed class AuthService(
 
         session.RevokedAt = timeProvider.GetUtcNow().UtcDateTime;
         await store.SaveChangesAsync(cancellationToken);
+        await secretChats.CloseForSessionsAsync([session.Id], cancellationToken);
         return true;
     }
 
@@ -259,12 +264,14 @@ public sealed class AuthService(
     {
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var sessions = await store.GetActiveSessionsAsync(userId, now, cancellationToken);
-        foreach (var session in sessions.Where(x => x.Id != currentSessionId))
+        var revoked = sessions.Where(x => x.Id != currentSessionId).ToList();
+        foreach (var session in revoked)
         {
             session.RevokedAt = now;
         }
 
         await store.SaveChangesAsync(cancellationToken);
+        await secretChats.CloseForSessionsAsync(revoked.Select(session => session.Id).ToList(), cancellationToken);
     }
 
     public async Task<IReadOnlyList<ActiveSessionDto>> GetActiveSessionsAsync(int userId, int currentSessionId, CancellationToken cancellationToken = default)

@@ -11,10 +11,12 @@ using Application.Features.Messages;
 using Application.Features.Organizations;
 using Application.Features.Files;
 using Application.Features.Presence;
+using Application.Features.SecretChats;
 using Application.Features.Stories;
 using Infrastructure.Email;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Backfills;
+using Infrastructure.Persistence.Maintenance;
 using Infrastructure.Persistence.Repositories;
 using Infrastructure.Security.Google;
 using Infrastructure.Realtime;
@@ -93,6 +95,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddSignalR();
         services.AddSingleton<IChatRealtimeNotifier, SignalRChatRealtimeNotifier>();
+        services.AddSingleton<ISecretChatRealtimeNotifier, SignalRSecretChatRealtimeNotifier>();
 
         // Redis hali production'da ulanmagani uchun hozircha barcha muhitda InMemoryPresenceTracker ishlatiladi.
         services.AddSingleton<IPresenceTracker, InMemoryPresenceTracker>();
@@ -136,12 +139,14 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IMessageAttachmentRepository, MessageAttachmentRepository>();
         services.AddScoped<IStoryRepository, StoryRepository>();
         services.AddScoped<IOrganizationRepository, OrganizationRepository>();
+        services.AddScoped<ISecretChatRepository, SecretChatRepository>();
         return services;
     }
 
     private static IServiceCollection AddBackgroundJobs(this IServiceCollection services)
     {
         services.AddHostedService<SearchTextBackfill>();
+        services.AddHostedService<SecretChatCleanup>();
         return services;
     }
 
@@ -207,6 +212,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IContactService, ContactService>();
         services.AddScoped<IChatService, ChatService>();
         services.AddScoped<IGroupService, GroupService>();
+        services.AddScoped<ISecretChatService, SecretChatService>();
         services.AddScoped<IUserDiscoveryService, UserDiscoveryService>();
         services.AddScoped<IMessageService, MessageService>();
         services.AddScoped<IMessageAttachmentService, MessageAttachmentService>();

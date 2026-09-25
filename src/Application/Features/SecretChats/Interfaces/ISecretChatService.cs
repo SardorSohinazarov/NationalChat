@@ -30,7 +30,8 @@ public interface ISecretChatService
 
 public sealed record SecretChatResult(SecretChatDto? Chat, string? Error);
 
-public sealed record SecretMessageResult(SecretMessageDto? Message, string? Error);
+/// <param name="Duplicate">The seq was already accepted (for example, a retry after a lost response).</param>
+public sealed record SecretMessageResult(SecretMessageDto? Message, string? Error, bool Duplicate = false);
 
 public sealed record SecretMessagesResult(SecretMessagesPage? Page, string? Error);
 

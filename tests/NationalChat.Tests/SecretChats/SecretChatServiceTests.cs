@@ -262,10 +262,14 @@ public sealed class SecretChatServiceTests
         var chat = await ActiveChatAsync();
 
         Assert.NotNull((await _service.SendAsync(_ali.Id, AliLaptop, chat.Id, new SendSecretMessageRequest(1, Cipher()))).Message);
-        Assert.Null((await _service.SendAsync(_ali.Id, AliLaptop, chat.Id, new SendSecretMessageRequest(1, Cipher()))).Message);
+        var replay = await _service.SendAsync(_ali.Id, AliLaptop, chat.Id, new SendSecretMessageRequest(1, Cipher()));
+        Assert.Null(replay.Message);
+        Assert.True(replay.Duplicate);
         Assert.NotNull((await _service.SendAsync(_ali.Id, AliLaptop, chat.Id, new SendSecretMessageRequest(3, Cipher()))).Message);
-        Assert.Null((await _service.SendAsync(_ali.Id, AliLaptop, chat.Id, new SendSecretMessageRequest(2, Cipher()))).Message);
-        Assert.Null((await _service.SendAsync(_ali.Id, AliLaptop, chat.Id, new SendSecretMessageRequest(0, Cipher()))).Message);
+        Assert.True((await _service.SendAsync(_ali.Id, AliLaptop, chat.Id, new SendSecretMessageRequest(2, Cipher()))).Duplicate);
+        var invalid = await _service.SendAsync(_ali.Id, AliLaptop, chat.Id, new SendSecretMessageRequest(0, Cipher()));
+        Assert.Null(invalid.Message);
+        Assert.False(invalid.Duplicate);
 
         // Each side has its own counter.
         Assert.NotNull((await _service.SendAsync(_vali.Id, ValiPhone, chat.Id, new SendSecretMessageRequest(1, Cipher()))).Message);

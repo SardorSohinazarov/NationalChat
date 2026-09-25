@@ -1,6 +1,6 @@
 # Maxfiy chatlar (E2E) — dizayn va reja
 
-> Holat: **1-bosqich (backend) tayyor.** Keyingisi 2-bosqich (klient kripto qatlami). Qarorlar 8-bo'limda, backend API shartnomasi 9-bo'limda.
+> Holat: **1-bosqich (backend) va 2-bosqich (klient kripto qatlami) tayyor.** Keyingisi 3-bosqich (UI). Qarorlar 8-bo'limda, backend API 9-bo'limda, klient protokoli 10-bo'limda.
 
 ## 0. Hozirgi holat
 
@@ -123,7 +123,7 @@ Kelajakda desktop yoki mobil ilova chiqsa, himoya kuchliroq bo'ladi.
 
 1. **Model:** qurilmaga bog'langan (Telegram modeli). ✅ Tasdiqlandi.
 2. **1-versiya: faqat matn.** Fayllar keyinroq (5-bosqich). ✅ Tasdiqlandi.
-3. **Protokol:** hali ochiq. Backend unga bog'liq emas: u faqat 32 baytlik X25519 ochiq kalit va shifrlangan blobni tashiydi. 2-bosqichdan oldin hal qilinadi.
+3. **Protokol:** Web Crypto'dagi hash-chain ratchet, tashqi kutubxonasiz. ✅ Tasdiqlandi. Tafsilotlari 10-bo'limda.
 
 ## 9. Backend API (1-bosqich natijasi)
 
@@ -144,7 +144,7 @@ Hamma endpointlar **joriy qurilma** nomidan ishlaydi: access token ichidagi `sid
 
 - `publicKey`: standart Base64 (padding bilan), aynan 32 bayt (X25519 raw).
 - `ciphertext`: standart Base64, 1 baytdan 32 KB gacha. Server uni ochmaydi va tuzilishiga qaramaydi. Klient `iv` ni blob ichiga qo'yadi.
-- `seq`: har tomonning o'z hisoblagichi, 1 dan boshlanadi va har xabarda o'sishi shart. Kichik yoki takroriy `seq` rad etiladi (replay himoyasi). Klient uni AES-GCM `additionalData` ga `secretChatId|senderSessionId|seq` ko'rinishida qo'shadi.
+- `seq`: har tomonning o'z hisoblagichi, 1 dan boshlanadi va har xabarda o'sishi shart. Kichik yoki takroriy `seq` **409 Conflict** bilan rad etiladi (replay himoyasi). Javobi yo'qolgan so'rovni qayta yuborgan klient 409 dan xabar allaqachon serverda ekanini biladi.
 - `status` JSON'da son: `1` Pending, `2` Active, `3` Closed (API'dagi boshqa enumlar kabi).
 - `mySessionId`: chat ko'ruvchi tomonda qaysi qurilmaga bog'langan. Klient o'z `sid`i bilan solishtiradi: mos kelmasa, chat boshqa qurilmada qabul qilingan, uni yashirish kerak.
 
@@ -164,3 +164,17 @@ Hamma endpointlar **joriy qurilma** nomidan ishlaydi: access token ichidagi `sid
 - Server tarix saqlamaydi: xabar tasdiqlangach (`ack`) o'chiriladi.
 
 **Ma'lumotlar bazasi:** `Add-Secret-Chats-E2E` migratsiyasi `EncryptionKey` ustunini o'chiradi va `messaging.secret_messages` jadvalini yaratadi. Eski `secret_chats` qatorlari o'chiriladi: ularning kaliti serverda edi va bog'lanadigan qurilmasi yo'q.
+
+## 10. Klient protokoli (2-bosqich natijasi)
+
+Kod: `NationalChatClient/src/app/features/chat/secret/`. Kripto qismi (`secret-crypto.ts`) Angular'ga bog'liq emas, kerak bo'lsa Web Worker'ga ko'chirish oson.
+
+- **Handshake:** har qurilma har chat uchun yangi X25519 kalit juftini yaratadi. Maxfiy kalit `extractable: false`: JS uni ishlata oladi, lekin baytlarini o'qiy olmaydi.
+- **Kalitlarni chiqarish:** `X25519(men, suhbatdosh)` → HKDF-SHA-256. Salt — `SHA-256("NationalChat secret chat v1")`, info — `nc-secret-v1|chatId|initiatorPub|participantPub`. Natija 64 bayt: ikki yo'nalish uchun ikki zanjir kaliti (tashabbuskor → qabul qiluvchi va teskarisi).
+- **Ratchet:** har xabarda `messageKey = HMAC(chainKey, 0x01)`, `chainKey' = HMAC(chainKey, 0x02)`. Eski zanjir kaliti unutiladi (forward secrecy). Xom baytlar faqat bir lahza mavjud bo'ladi va darhol nollanadi.
+- **Shifrlash:** AES-256-GCM. `additionalData` = `chatId|yo'nalish|seq`, yo'nalish `i` yoki `p`. Qabul qiluvchi yuboruvchining session id'sini bilmaydi, ikki qurilmali chatda yo'nalish bilan bog'lash unga teng. Blob: `[versiya=1][12 bayt iv][shifrlangan matn + teg]`. Ichida JSON: `{ v: 1, text, replyToSeq, sentAt }`.
+- **Tartibsiz kelgan xabar:** 200 tagacha o'tkazib yuborilgan xabarning kaliti vaqtincha saqlanadi va bir marta ishlatiladi. Soxta xabar zanjirni siljitmaydi: holat faqat muvaffaqiyatli ochilgandan keyin saqlanadi.
+- **Fingerprint:** `SHA-256("nc-secret-fingerprint-v1" | initiatorPub | participantPub)`. U 8 ta emoji va 6 ta 5 xonali raqam guruhi ko'rinishida chiqadi.
+- **Saqlash:** IndexedDB (`nationalchat-secret-chats`): kalitlar, zanjir holati va ochilgan tarix. Zanjir holati va xabar bitta tranzaksiyada yoziladi. Logoutda va boshqa login qilinganda hammasi o'chiriladi.
+- **Yetkazish:** yuboriladigan xabar avval qurilmada saqlanadi (outbox), keyin qat'iy tartibda yuboriladi. Qabul qilishda xabar faqat ochilgandan yoki tashlab yuborilgandan keyin `ack` qilinadi. Handshake tugamagan bo'lsa, xabar serverda qoladi.
+- **Brauzer talabi:** Web Crypto'da X25519 (Chrome/Edge 133+, Firefox 130+, Safari 17+). Qo'llab-quvvatlanmasa `SecretChatService.supported()` false bo'ladi.

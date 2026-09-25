@@ -19,6 +19,7 @@ public sealed class SecretChatService(
 {
     private const string NotFoundError = "Maxfiy chat topilmadi.";
     private const string InactiveSessionError = "Qurilma sessiyasi faol emas.";
+    private const string DuplicateSeqError = "Bu tartib raqamli xabar allaqachon qabul qilingan.";
     private const int CleanupBatchSize = 200;
 
     private enum Side
@@ -120,7 +121,7 @@ public sealed class SecretChatService(
         if (chat.Status != SecretChatStatus.Active) return new(null, "Maxfiy chat faol emas.");
 
         var lastSeq = side == Side.Initiator ? chat.InitiatorLastSeq : chat.ParticipantLastSeq;
-        if (request.Seq <= lastSeq) return new(null, "Bu tartib raqamli xabar allaqachon qabul qilingan.");
+        if (request.Seq <= lastSeq) return new(null, DuplicateSeqError, Duplicate: true);
 
         if (side == Side.Initiator) chat.InitiatorLastSeq = request.Seq;
         else chat.ParticipantLastSeq = request.Seq;
@@ -129,7 +130,7 @@ public sealed class SecretChatService(
         var message = SecretChatFactory.CreateMessage(chat.Id, sessionId, request.Seq, ciphertext, Now());
         if (!await repository.TryAddMessageAsync(message, cancellationToken))
         {
-            return new(null, "Bu tartib raqamli xabar allaqachon qabul qilingan.");
+            return new(null, DuplicateSeqError, Duplicate: true);
         }
 
         var dto = SecretChatMapper.ToDto(message);

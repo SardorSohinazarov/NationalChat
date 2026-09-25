@@ -44,9 +44,11 @@ public sealed class SecretChatController(ISecretChatService secretChatService) :
     public async Task<IActionResult> Send(int id, SendSecretMessageRequest request, CancellationToken cancellationToken)
     {
         var result = await secretChatService.SendAsync(GetCurrentUserId(), GetCurrentSessionId(), id, request, cancellationToken);
-        return result.Message is null
-            ? BadRequest(Result.Fail(result.Error ?? "Xabarni yuborib bo'lmadi."))
-            : Ok(Result.Success(result.Message));
+        if (result.Message is not null) return Ok(Result.Success(result.Message));
+        // 409 lets a client that retries after a lost response know the message is already queued.
+        return result.Duplicate
+            ? Conflict(Result.Fail(result.Error ?? "Xabar allaqachon qabul qilingan."))
+            : BadRequest(Result.Fail(result.Error ?? "Xabarni yuborib bo'lmadi."));
     }
 
     /// <summary>Messages waiting for this device, oldest first. Acknowledge them so the server deletes them.</summary>

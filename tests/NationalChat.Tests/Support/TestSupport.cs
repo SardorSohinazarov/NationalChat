@@ -82,27 +82,16 @@ public sealed class FakeOrganizationRepository(FakeGroupRepository groups) : IOr
     public List<Organization> Organizations { get; } = [];
     public List<OrganizationMember> Members { get; } = [];
 
-    public Task<IReadOnlyList<Organization>> GetAllWithDomainsAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<Organization>>(Organizations.ToList());
+    public Task<Organization?> FindByDomainAsync(string domain, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Organizations.FirstOrDefault(o => o.Domain == domain));
 
-    public Task AddOrganizationAsync(Organization organization, CancellationToken cancellationToken = default)
+    public Task<bool> TryAddOrganizationAsync(Organization organization, CancellationToken cancellationToken = default)
     {
+        if (Organizations.Any(o => o.Domain == organization.Domain)) return Task.FromResult(false);
+        organization.Id = _nextId++;
         Organizations.Add(organization);
-        return Task.CompletedTask;
+        return Task.FromResult(true);
     }
-
-    public void RemoveDomain(OrganizationDomain domain)
-    {
-    }
-
-    public Task RemoveMembersAsync(int organizationId, CancellationToken cancellationToken = default)
-    {
-        foreach (var member in Members.Where(m => m.OrganizationId == organizationId).ToList()) RemoveMember(member);
-        return Task.CompletedTask;
-    }
-
-    public Task<Organization?> FindActiveByDomainAsync(string domain, CancellationToken cancellationToken = default) =>
-        Task.FromResult(Organizations.FirstOrDefault(o => o.IsActive && o.Domains.Any(d => d.Domain == domain)));
 
     public Task<OrganizationMember?> GetMembershipAsync(int userId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Members.FirstOrDefault(m => m.UserId == userId));
@@ -123,26 +112,13 @@ public sealed class FakeOrganizationRepository(FakeGroupRepository groups) : IOr
         return Task.FromResult(true);
     }
 
-    public void RemoveMember(OrganizationMember member)
-    {
-        Members.Remove(member);
-        var user = groups.Users.FirstOrDefault(u => u.Id == member.UserId);
-        if (user?.OrganizationMembership == member) user.OrganizationMembership = null;
-    }
-
     public Task<IReadOnlyList<int>> GetAutoJoinGroupChatIdsAsync(int organizationId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<int>>(groups.Groups.Where(g => g.OrganizationId == organizationId && g.AutoJoin).Select(g => g.ChatId).ToList());
 
     public Task<MyOrganizationDto?> GetMyOrganizationAsync(int userId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Members.Where(m => m.UserId == userId)
-            .Select(m => (MyOrganizationDto?)new MyOrganizationDto(m.Organization.Id, m.Organization.Name, m.Organization.ShortName, m.Role))
+            .Select(m => (MyOrganizationDto?)new MyOrganizationDto(m.Organization.Id, m.Organization.Domain, m.Organization.ShortName, m.Role))
             .FirstOrDefault());
-
-    public Task SaveChangesAsync(CancellationToken cancellationToken = default)
-    {
-        foreach (var organization in Organizations.Where(o => o.Id == 0)) organization.Id = _nextId++;
-        return Task.CompletedTask;
-    }
 }
 
 /// <summary>Builds users and groups for tests.</summary>
@@ -160,14 +136,12 @@ public static class TestData
         CreatedAt = Start,
     };
 
-    public static Organization Organization(int id, string shortName, params string[] domains) => new()
+    public static Organization Organization(int id, string domain) => new()
     {
         Id = id,
-        Name = shortName + " universiteti",
-        ShortName = shortName,
-        IsActive = true,
+        Domain = domain,
+        ShortName = domain.Split('.')[0].ToUpperInvariant(),
         CreatedAt = Start,
-        Domains = domains.Select((domain, index) => new OrganizationDomain { Id = id * 10 + index, OrganizationId = id, Domain = domain }).ToList(),
     };
 
     /// <summary>Makes <paramref name="user"/> a verified member of <paramref name="organization"/>.</summary>

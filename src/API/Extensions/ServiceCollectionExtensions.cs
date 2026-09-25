@@ -9,12 +9,10 @@ using Application.Features.Groups;
 using Application.Features.Users;
 using Application.Features.Messages;
 using Application.Features.Organizations;
-using Application.Features.Organizations.Options;
 using Application.Features.Files;
 using Application.Features.Presence;
 using Application.Features.Stories;
 using Infrastructure.Email;
-using Infrastructure.Organizations;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Backfills;
 using Infrastructure.Persistence.Repositories;
@@ -57,7 +55,7 @@ public static class ServiceCollectionExtensions
             .AddApiDocumentation()
             .AddPersistence(configuration)
             .AddBackgroundJobs()
-            .AddOrganizations(configuration)
+            .AddOrganizations()
             .AddJwtAuthentication(jwtOptions)
             .AddApplicationServices(environment)
             .AddSecurityServices(jwtOptions, authOptions, authSecurityOptions, googleAuthOptions, antivirusOptions)
@@ -147,16 +145,11 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    private static IServiceCollection AddOrganizations(this IServiceCollection services, IConfiguration configuration)
+    /// <summary>Organizations need no configuration: they are created from e-mail domains on sign-in.</summary>
+    private static IServiceCollection AddOrganizations(this IServiceCollection services)
     {
-        // "Organizations" is a list of { Name, ShortName, Domains[], AdminEmails[] }; in environment variables:
-        // Organizations__0__ShortName=TATU, Organizations__0__Domains__0=tuit.uz, ...
-        var organizations = configuration.GetSection("Organizations").Get<List<OrganizationOptions>>() ?? [];
-        services.AddSingleton(new OrganizationCatalog(organizations));
         services.AddScoped<IOrganizationService, OrganizationService>();
         services.AddScoped<IOrganizationMembershipService, OrganizationMembershipService>();
-        services.AddScoped<IOrganizationSyncService, OrganizationSyncService>();
-        services.AddHostedService<OrganizationSync>();
         return services;
     }
 

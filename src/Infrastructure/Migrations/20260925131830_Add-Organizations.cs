@@ -62,36 +62,13 @@ namespace Infrastructure.Migrations
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    Domain = table.Column<string>(type: "character varying(253)", maxLength: 253, nullable: false),
                     ShortName = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_organizations", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "organization_domains",
-                schema: "organizations",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    OrganizationId = table.Column<int>(type: "integer", nullable: false),
-                    Domain = table.Column<string>(type: "character varying(253)", maxLength: 253, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_organization_domains", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_organization_domains_organizations_OrganizationId",
-                        column: x => x.OrganizationId,
-                        principalSchema: "organizations",
-                        principalTable: "organizations",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -139,19 +116,6 @@ namespace Infrastructure.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_organization_domains_Domain",
-                schema: "organizations",
-                table: "organization_domains",
-                column: "Domain",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_organization_domains_OrganizationId",
-                schema: "organizations",
-                table: "organization_domains",
-                column: "OrganizationId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_organization_members_OrganizationId",
                 schema: "organizations",
                 table: "organization_members",
@@ -165,10 +129,10 @@ namespace Infrastructure.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_organizations_ShortName",
+                name: "IX_organizations_Domain",
                 schema: "organizations",
                 table: "organizations",
-                column: "ShortName",
+                column: "Domain",
                 unique: true);
 
             migrationBuilder.AddForeignKey(
@@ -189,10 +153,6 @@ namespace Infrastructure.Migrations
                 name: "FK_groups_organizations_OrganizationId",
                 schema: "chat",
                 table: "groups");
-
-            migrationBuilder.DropTable(
-                name: "organization_domains",
-                schema: "organizations");
 
             migrationBuilder.DropTable(
                 name: "organization_members",

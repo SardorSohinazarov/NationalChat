@@ -245,6 +245,25 @@ public sealed class GroupService(
         return new(true, null);
     }
 
+    public async Task<bool> CreateOrganizationGroupAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        var owner = (await repository.FindUsersAsync([userId], cancellationToken)).FirstOrDefault();
+        var organization = owner?.OrganizationMembership?.Organization;
+        if (owner is null || organization is null) return false;
+
+        var members = await repository.FindOrganizationUsersAsync(
+            organization.Id, [userId], GroupLimits.MaxOrganizationMembers - 1, cancellationToken);
+        var group = GroupFactory.Create(
+            $"{organization.ShortName} jamoasi",
+            $"@{organization.Domain} pochtasi bilan kirgan hamma shu yerda. Guruh avtomatik yaratilgan.",
+            owner, members, timeProvider.GetUtcNow().UtcDateTime, organization, autoJoin: true);
+        await repository.AddGroupAsync(group, cancellationToken);
+        await repository.SaveChangesAsync(cancellationToken);
+
+        await PublishServiceMessageAsync(group.Chat.Messages.Single(), group, cancellationToken);
+        return true;
+    }
+
     public async Task<bool> JoinViaOrganizationAsync(int chatId, int userId, CancellationToken cancellationToken = default)
     {
         var group = await repository.GetGroupAsync(chatId, cancellationToken);

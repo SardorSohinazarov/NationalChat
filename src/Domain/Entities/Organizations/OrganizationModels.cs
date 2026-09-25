@@ -1,26 +1,19 @@
 namespace Domain.Entities;
 
-/// <summary>An organization (university, company) whose members are verified by their e-mail domain.</summary>
+/// <summary>
+/// An organization is identified by its e-mail domain (e.g. "tuit.uz"). It is created automatically when the
+/// first person with such an address signs in; nobody registers it by hand.
+/// </summary>
 public class Organization
 {
     public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
+    /// <summary>Lower-case organization domain without a trailing dot. Unique.</summary>
+    public string Domain { get; set; } = string.Empty;
+    /// <summary>Badge text derived from the domain, e.g. "TUIT" for tuit.uz.</summary>
     public string ShortName { get; set; } = string.Empty;
-    public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
 
-    public ICollection<OrganizationDomain> Domains { get; set; } = new List<OrganizationDomain>();
     public ICollection<OrganizationMember> Members { get; set; } = new List<OrganizationMember>();
-}
-
-public class OrganizationDomain
-{
-    public int Id { get; set; }
-    public int OrganizationId { get; set; }
-    /// <summary>Lower-case domain without a trailing dot, e.g. "tuit.uz". Unique across organizations.</summary>
-    public string Domain { get; set; } = string.Empty;
-
-    public Organization Organization { get; set; }
 }
 
 /// <summary>Verified membership. A user belongs to at most one organization (one e-mail, one domain).</summary>

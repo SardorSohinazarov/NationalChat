@@ -9,28 +9,35 @@ namespace Infrastructure.Persistence.Repositories;
 
 public sealed class OrganizationRepository(ChatDb db) : IOrganizationRepository
 {
-    public async Task<IReadOnlyList<Organization>> GetAllWithDomainsAsync(CancellationToken cancellationToken = default) =>
-        await db.Organizations.Include(organization => organization.Domains).ToListAsync(cancellationToken);
+    public Task<Organization?> FindByDomainAsync(string domain, CancellationToken cancellationToken = default) =>
+        db.Organizations.FirstOrDefaultAsync(organization => organization.Domain == domain, cancellationToken);
 
-    public Task AddOrganizationAsync(Organization organization, CancellationToken cancellationToken = default) =>
-        db.Organizations.AddAsync(organization, cancellationToken).AsTask();
-
-    public void RemoveDomain(OrganizationDomain domain) => db.OrganizationDomains.Remove(domain);
-
-    public Task RemoveMembersAsync(int organizationId, CancellationToken cancellationToken = default) =>
-        db.OrganizationMembers.Where(member => member.OrganizationId == organizationId).ExecuteDeleteAsync(cancellationToken);
-
-    public Task<Organization?> FindActiveByDomainAsync(string domain, CancellationToken cancellationToken = default) =>
-        db.Organizations.AsNoTracking()
-            .FirstOrDefaultAsync(organization => organization.IsActive && organization.Domains.Any(x => x.Domain == domain), cancellationToken);
+    public Task<bool> TryAddOrganizationAsync(Organization organization, CancellationToken cancellationToken = default) =>
+        TryAddAsync(organization, cancellationToken);
 
     public Task<OrganizationMember?> GetMembershipAsync(int userId, CancellationToken cancellationToken = default) =>
-        db.OrganizationMembers.Include(member => member.Organization)
-            .FirstOrDefaultAsync(member => member.UserId == userId, cancellationToken);
+        db.OrganizationMembers.AsNoTracking().FirstOrDefaultAsync(member => member.UserId == userId, cancellationToken);
 
-    public async Task<bool> TryAddMemberAsync(OrganizationMember member, CancellationToken cancellationToken = default)
+    public Task<bool> TryAddMemberAsync(OrganizationMember member, CancellationToken cancellationToken = default) =>
+        TryAddAsync(member, cancellationToken);
+
+    public async Task<IReadOnlyList<int>> GetAutoJoinGroupChatIdsAsync(int organizationId, CancellationToken cancellationToken = default) =>
+        await db.Groups.AsNoTracking()
+            .Where(group => group.OrganizationId == organizationId && group.AutoJoin && group.Chat.DeletedAt == null)
+            .OrderBy(group => group.Id)
+            .Select(group => group.ChatId)
+            .ToListAsync(cancellationToken);
+
+    public Task<MyOrganizationDto?> GetMyOrganizationAsync(int userId, CancellationToken cancellationToken = default) =>
+        db.OrganizationMembers.AsNoTracking()
+            .Where(member => member.UserId == userId)
+            .Select(OrganizationMapper.MyOrganizationProjection)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    /// <summary>Unique indexes (domain, user) decide races between simultaneous first sign-ins.</summary>
+    private async Task<bool> TryAddAsync<TEntity>(TEntity entity, CancellationToken cancellationToken) where TEntity : class
     {
-        var entry = await db.OrganizationMembers.AddAsync(member, cancellationToken);
+        var entry = await db.Set<TEntity>().AddAsync(entity, cancellationToken);
         try
         {
             await db.SaveChangesAsync(cancellationToken);
@@ -42,21 +49,4 @@ public sealed class OrganizationRepository(ChatDb db) : IOrganizationRepository
             return false;
         }
     }
-
-    public void RemoveMember(OrganizationMember member) => db.OrganizationMembers.Remove(member);
-
-    public async Task<IReadOnlyList<int>> GetAutoJoinGroupChatIdsAsync(int organizationId, CancellationToken cancellationToken = default) =>
-        await db.Groups.AsNoTracking()
-            .Where(group => group.OrganizationId == organizationId && group.AutoJoin && group.Chat.DeletedAt == null)
-            .OrderBy(group => group.Id)
-            .Select(group => group.ChatId)
-            .ToListAsync(cancellationToken);
-
-    public Task<MyOrganizationDto?> GetMyOrganizationAsync(int userId, CancellationToken cancellationToken = default) =>
-        db.OrganizationMembers.AsNoTracking()
-            .Where(member => member.UserId == userId && member.Organization.IsActive)
-            .Select(OrganizationMapper.MyOrganizationProjection)
-            .FirstOrDefaultAsync(cancellationToken);
-
-    public Task SaveChangesAsync(CancellationToken cancellationToken = default) => db.SaveChangesAsync(cancellationToken);
 }

@@ -16,5 +16,5 @@ public static class OrganizationMapper
         organization is null ? null : new OrganizationBadgeDto(organization.Id, organization.ShortName);
 
     public static Expression<Func<OrganizationMember, MyOrganizationDto>> MyOrganizationProjection => member =>
-        new(member.Organization.Id, member.Organization.Name, member.Organization.ShortName, member.Role);
+        new(member.Organization.Id, member.Organization.Domain, member.Organization.ShortName, member.Role);
 }

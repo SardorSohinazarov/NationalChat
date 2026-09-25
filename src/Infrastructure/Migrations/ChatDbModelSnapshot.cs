@@ -579,13 +579,10 @@ namespace Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
+                    b.Property<string>("Domain")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
+                        .HasMaxLength(253)
+                        .HasColumnType("character varying(253)");
 
                     b.Property<string>("ShortName")
                         .IsRequired()
@@ -594,36 +591,10 @@ namespace Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ShortName")
-                        .IsUnique();
-
-                    b.ToTable("organizations", "organizations");
-                });
-
-            modelBuilder.Entity("Domain.Entities.OrganizationDomain", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Domain")
-                        .IsRequired()
-                        .HasMaxLength(253)
-                        .HasColumnType("character varying(253)");
-
-                    b.Property<int>("OrganizationId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
                     b.HasIndex("Domain")
                         .IsUnique();
 
-                    b.HasIndex("OrganizationId");
-
-                    b.ToTable("organization_domains", "organizations");
+                    b.ToTable("organizations", "organizations");
                 });
 
             modelBuilder.Entity("Domain.Entities.OrganizationMember", b =>
@@ -1425,17 +1396,6 @@ namespace Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Domain.Entities.OrganizationDomain", b =>
-                {
-                    b.HasOne("Domain.Entities.Organization", "Organization")
-                        .WithMany("Domains")
-                        .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Organization");
-                });
-
             modelBuilder.Entity("Domain.Entities.OrganizationMember", b =>
                 {
                     b.HasOne("Domain.Entities.Organization", "Organization")
@@ -1729,8 +1689,6 @@ namespace Infrastructure.Migrations
 
             modelBuilder.Entity("Domain.Entities.Organization", b =>
                 {
-                    b.Navigation("Domains");
-
                     b.Navigation("Members");
                 });
 

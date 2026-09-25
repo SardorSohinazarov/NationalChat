@@ -3,7 +3,6 @@ using Application.Features.Groups;
 using Application.Features.Groups.Validators;
 using Application.Features.Messages;
 using Application.Features.Organizations;
-using Application.Features.Organizations.Options;
 using Application.Features.Presence;
 using Domain.Entities;
 using NationalChat.Tests.Support;
@@ -15,30 +14,23 @@ public sealed class OrganizationMembershipServiceTests
 {
     private readonly FakeGroupRepository _groups = new();
     private readonly FakeOrganizationRepository _organizations;
-    private readonly IChatRealtimeNotifier _notifier = Substitute.For<IChatRealtimeNotifier>();
     private readonly OrganizationMembershipService _service;
-    private readonly Organization _tatu = TestData.Organization(1, "TATU", "tuit.uz", "student.tuit.uz");
 
     public OrganizationMembershipServiceTests()
     {
         _organizations = new FakeOrganizationRepository(_groups);
-        _organizations.Organizations.Add(_tatu);
         var clock = new FixedTimeProvider(new DateTimeOffset(TestData.Start.AddDays(1)));
         var groupService = new GroupService(
             _groups,
             Substitute.For<IFileService>(),
-            _notifier,
+            Substitute.For<IChatRealtimeNotifier>(),
             Substitute.For<IPresenceTracker>(),
             new CreateGroupRequestValidator(),
             new UpdateGroupRequestValidator(),
             new AddGroupMembersRequestValidator(),
             new UpdateGroupMemberRoleRequestValidator(),
             clock);
-        var catalog = new OrganizationCatalog(
-        [
-            new OrganizationOptions { Name = "TATU", ShortName = "TATU", Domains = ["tuit.uz"], AdminEmails = ["Rektor@tuit.uz"] }
-        ]);
-        _service = new OrganizationMembershipService(_organizations, groupService, catalog, clock);
+        _service = new OrganizationMembershipService(_organizations, groupService, clock);
     }
 
     private User AddUser(int id, string email)
@@ -49,107 +41,102 @@ public sealed class OrganizationMembershipServiceTests
         return user;
     }
 
-    [Theory]
-    [InlineData("ali@tuit.uz")]
-    [InlineData("ALI@Student.Tuit.Uz")]
-    public async Task OrganizationEmail_BecomesMember(string email)
+    private Group CommonGroup(Organization organization) =>
+        Assert.Single(_groups.Groups, group => group.OrganizationId == organization.Id && group.AutoJoin);
+
+    [Fact]
+    public async Task FirstUserFromDomain_CreatesOrganizationAndCommonGroupAndIsAdmin()
     {
-        var user = AddUser(1, email);
+        var ali = AddUser(1, "ali@tuit.uz");
 
-        await _service.EnsureMembershipAsync(user);
+        await _service.EnsureMembershipAsync(ali);
 
-        var member = Assert.Single(_organizations.Members);
-        Assert.Equal(_tatu.Id, member.OrganizationId);
-        Assert.Equal(OrganizationRole.Member, member.Role);
+        var organization = Assert.Single(_organizations.Organizations);
+        Assert.Equal("tuit.uz", organization.Domain);
+        Assert.Equal("TUIT", organization.ShortName);
+        Assert.Equal(OrganizationRole.Admin, Assert.Single(_organizations.Members).Role);
+
+        var group = CommonGroup(organization);
+        Assert.Equal("TUIT jamoasi", group.Title);
+        var owner = Assert.Single(group.Chat.Members);
+        Assert.Equal((ali.Id, ChatMemberRole.Creator), (owner.UserId, owner.Role));
+        Assert.Equal(MessageServiceAction.GroupCreated, Assert.Single(group.Chat.Messages).ServiceAction);
     }
 
     [Fact]
-    public async Task AdminEmail_BecomesAdmin()
+    public async Task NextUsers_JoinAsMembersWithServiceMessage_IncludingSubdomains()
     {
-        var user = AddUser(1, "rektor@tuit.uz");
+        var ali = AddUser(1, "ali@tuit.uz");
+        var vali = AddUser(2, "vali@student.tuit.uz");
+        await _service.EnsureMembershipAsync(ali);
 
-        await _service.EnsureMembershipAsync(user);
+        await _service.EnsureMembershipAsync(vali);
 
-        Assert.Equal(OrganizationRole.Admin, Assert.Single(_organizations.Members).Role);
+        Assert.Single(_organizations.Organizations);
+        Assert.Equal(OrganizationRole.Member, _organizations.Members.Single(m => m.UserId == vali.Id).Role);
+        var group = Assert.Single(_groups.Groups);
+        Assert.Contains(group.Chat.Members, member => member.UserId == vali.Id && member.Role == ChatMemberRole.Member);
+        var joined = group.Chat.Messages.Last();
+        Assert.Equal(MessageServiceAction.MemberJoinedViaOrganization, joined.ServiceAction);
+        Assert.Equal("TUIT", joined.TextContent);
+    }
+
+    [Fact]
+    public async Task DifferentDomains_GetSeparateOrganizationsAndGroups()
+    {
+        await _service.EnsureMembershipAsync(AddUser(1, "ali@tuit.uz"));
+        await _service.EnsureMembershipAsync(AddUser(2, "hr@rtm.uz"));
+
+        Assert.Equal(["tuit.uz", "rtm.uz"], _organizations.Organizations.Select(o => o.Domain));
+        Assert.Equal(2, _groups.Groups.Count);
+        Assert.All(_organizations.Members, member => Assert.Equal(OrganizationRole.Admin, member.Role));
     }
 
     [Theory]
     [InlineData("ali@gmail.com")]
-    [InlineData("ali@evil-tuit.uz")]
-    [InlineData("ali@tuit.uz.evil.com")]
-    public async Task OtherEmail_IsNotMember(string email)
+    [InlineData("ali@mail.ru")]
+    [InlineData("ali@umail.uz")]
+    public async Task PublicMailUser_GetsNothing(string email)
     {
         await _service.EnsureMembershipAsync(AddUser(1, email));
 
+        Assert.Empty(_organizations.Organizations);
         Assert.Empty(_organizations.Members);
-    }
-
-    [Fact]
-    public async Task PublicDomain_IsIgnoredEvenIfRegistered()
-    {
-        // The sync rejects such configuration, but membership must not trust the database blindly either.
-        _tatu.Domains.Add(new OrganizationDomain { Domain = "gmail.com", OrganizationId = _tatu.Id });
-
-        await _service.EnsureMembershipAsync(AddUser(1, "ali@gmail.com"));
-
-        Assert.Empty(_organizations.Members);
-    }
-
-    [Fact]
-    public async Task NewMember_JoinsAutoJoinGroupsWithServiceMessage()
-    {
-        var admin = AddUser(1, "rektor@tuit.uz").Verified(_tatu, OrganizationRole.Admin);
-        var autoJoin = TestData.Group(10, "TATU — umumiy", (admin, ChatMemberRole.Creator));
-        autoJoin.OrganizationId = _tatu.Id;
-        autoJoin.Organization = _tatu;
-        autoJoin.AutoJoin = true;
-        var manual = TestData.Group(20, "TATU — kafedra", (admin, ChatMemberRole.Creator));
-        manual.OrganizationId = _tatu.Id;
-        manual.Organization = _tatu;
-        _groups.Groups.AddRange([autoJoin, manual]);
-        var ali = AddUser(2, "ali@tuit.uz");
-
-        await _service.EnsureMembershipAsync(ali);
-
-        Assert.Contains(autoJoin.Chat.Members, member => member.UserId == ali.Id && member.Role == ChatMemberRole.Member);
-        Assert.DoesNotContain(manual.Chat.Members, member => member.UserId == ali.Id);
-        var message = Assert.Single(autoJoin.Chat.Messages);
-        Assert.Equal(MessageServiceAction.MemberJoinedViaOrganization, message.ServiceAction);
-        Assert.Equal(ali.Id, message.SenderId);
-        Assert.Equal("TATU", message.TextContent);
+        Assert.Empty(_groups.Groups);
     }
 
     [Fact]
     public async Task RepeatedSignIn_DoesNotJoinAgain()
     {
-        var admin = AddUser(1, "rektor@tuit.uz").Verified(_tatu, OrganizationRole.Admin);
-        var group = TestData.Group(10, "TATU — umumiy", (admin, ChatMemberRole.Creator));
-        group.OrganizationId = _tatu.Id;
-        group.Organization = _tatu;
-        group.AutoJoin = true;
-        _groups.Groups.Add(group);
-        var ali = AddUser(2, "ali@tuit.uz");
-
+        var ali = AddUser(1, "ali@tuit.uz");
+        var vali = AddUser(2, "vali@tuit.uz");
         await _service.EnsureMembershipAsync(ali);
-        // Ali leaves; the next sign-in must not pull him back.
-        group.Chat.Members.Remove(group.Chat.Members.Single(member => member.UserId == ali.Id));
-        await _service.EnsureMembershipAsync(ali);
+        await _service.EnsureMembershipAsync(vali);
+        var group = Assert.Single(_groups.Groups);
+        // Vali leaves; the next sign-in must not pull him back or create another group.
+        group.Chat.Members.Remove(group.Chat.Members.Single(member => member.UserId == vali.Id));
+        var messageCount = group.Chat.Messages.Count;
 
-        Assert.Single(_organizations.Members);
-        Assert.DoesNotContain(group.Chat.Members, member => member.UserId == ali.Id);
-        Assert.Single(group.Chat.Messages);
+        await _service.EnsureMembershipAsync(vali);
+
+        Assert.Equal(2, _organizations.Members.Count);
+        Assert.DoesNotContain(group.Chat.Members, member => member.UserId == vali.Id);
+        Assert.Equal(messageCount, group.Chat.Messages.Count);
+        Assert.Single(_groups.Groups);
     }
 
     [Fact]
-    public async Task RemovedDomain_DropsMembership()
+    public async Task DeletedCommonGroup_IsRecreatedWithExistingMembers()
     {
         var ali = AddUser(1, "ali@tuit.uz");
         await _service.EnsureMembershipAsync(ali);
-        _tatu.Domains.Clear();
+        _groups.Groups.Clear();
+        var vali = AddUser(2, "vali@tuit.uz");
 
-        await _service.EnsureMembershipAsync(ali);
+        await _service.EnsureMembershipAsync(vali);
 
-        Assert.Empty(_organizations.Members);
-        Assert.Null(ali.OrganizationMembership);
+        var group = Assert.Single(_groups.Groups);
+        Assert.Equal(vali.Id, group.CreatorId);
+        Assert.Equal([ali.Id, vali.Id], group.Chat.Members.Select(member => member.UserId).Order());
     }
 }

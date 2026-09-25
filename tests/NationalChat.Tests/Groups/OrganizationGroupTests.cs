@@ -14,7 +14,7 @@ public sealed class OrganizationGroupTests
 {
     private readonly FakeGroupRepository _repository = new();
     private readonly GroupService _service;
-    private readonly Organization _tatu = TestData.Organization(1, "TATU", "tuit.uz");
+    private readonly Organization _tatu = TestData.Organization(1, "tuit.uz");
     private readonly User _rektor;
     private readonly User _ali;
     private readonly User _vali;
@@ -44,7 +44,7 @@ public sealed class OrganizationGroupTests
         var result = await _service.CreateAsync(_ali.Id, new CreateGroupRequest("Kafedra", null, [_vali.Id], OrganizationOnly: true));
 
         Assert.Null(result.Error);
-        Assert.Equal("TATU", result.Group!.Organization!.ShortName);
+        Assert.Equal("TUIT", result.Group!.Organization!.ShortName);
         Assert.False(result.Group.AutoJoin);
         Assert.All(result.Group.Members, member => Assert.Equal(_tatu.Id, member.Organization!.Id));
         Assert.Equal(_tatu.Id, Assert.Single(_repository.Groups).OrganizationId);
@@ -64,7 +64,7 @@ public sealed class OrganizationGroupTests
     {
         var result = await _service.CreateAsync(_ali.Id, new CreateGroupRequest("Kafedra", null, [_vali.Id, _outsider.Id], OrganizationOnly: true));
 
-        Assert.Equal("Bu guruhga faqat TATU a'zolarini qo'shish mumkin.", result.Error);
+        Assert.Equal("Bu guruhga faqat TUIT a'zolarini qo'shish mumkin.", result.Error);
         Assert.Empty(_repository.Groups);
     }
 
@@ -73,7 +73,7 @@ public sealed class OrganizationGroupTests
     {
         var result = await _service.CreateAsync(_ali.Id, new CreateGroupRequest("TATU — umumiy", null, [], OrganizationOnly: true, AutoJoin: true));
 
-        Assert.Equal("Avtomatik qo'shishni faqat TATU admini yoqa oladi.", result.Error);
+        Assert.Equal("Avtomatik qo'shishni faqat TUIT admini yoqa oladi.", result.Error);
         Assert.Empty(_repository.Groups);
     }
 
@@ -94,7 +94,7 @@ public sealed class OrganizationGroupTests
 
         var result = await _service.AddMembersAsync(_rektor.Id, group.ChatId, new AddGroupMembersRequest([_outsider.Id]));
 
-        Assert.Equal("Bu guruhga faqat TATU a'zolarini qo'shish mumkin.", result.Error);
+        Assert.Equal("Bu guruhga faqat TUIT a'zolarini qo'shish mumkin.", result.Error);
         Assert.DoesNotContain(group.Chat.Members, member => member.UserId == _outsider.Id);
     }
 

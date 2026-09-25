@@ -15,6 +15,12 @@ public interface IGroupService
     Task<GroupResult> UpdateMemberRoleAsync(int currentUserId, int chatId, int userId, UpdateGroupMemberRoleRequest request, CancellationToken cancellationToken = default);
     Task<GroupLeaveResult> LeaveAsync(int currentUserId, int chatId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Creates the organization's common auto-join group ("TUIT jamoasi") owned by <paramref name="userId"/>,
+    /// together with every verified member already known; false when the user has no organization.
+    /// </summary>
+    Task<bool> CreateOrganizationGroupAsync(int userId, CancellationToken cancellationToken = default);
+
     /// <summary>Adds a verified organization member to an organization group (auto-join); false when not applicable.</summary>
     Task<bool> JoinViaOrganizationAsync(int chatId, int userId, CancellationToken cancellationToken = default);
 }

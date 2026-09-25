@@ -5,31 +5,41 @@ namespace NationalChat.Tests.Organizations;
 public sealed class OrganizationEmailMatcherTests
 {
     [Theory]
-    [InlineData("ali@tuit.uz", "tuit.uz", true)]
-    [InlineData("Ali@TUIT.UZ", "tuit.uz", true)]
-    [InlineData("ali@tuit.uz.", "tuit.uz", true)]
-    [InlineData("ali@tuit.uz", "TUIT.uz.", true)]
-    [InlineData("ali@evil-tuit.uz", "tuit.uz", false)]
-    [InlineData("ali@tuit.uz.evil.com", "tuit.uz", false)]
-    [InlineData("ali@student.tuit.uz", "tuit.uz", false)]
-    [InlineData("ali@student.tuit.uz", "student.tuit.uz", true)]
-    [InlineData("tuit.uz", "tuit.uz", false)]
-    [InlineData("", "tuit.uz", false)]
-    public void Matches_OnlyExactDomain(string email, string domain, bool expected)
+    [InlineData("ali@tuit.uz", "tuit.uz")]
+    [InlineData("Ali@TUIT.UZ.", "tuit.uz")]
+    [InlineData("vali@student.tuit.uz", "tuit.uz")]
+    [InlineData("hr@rtm.uz", "rtm.uz")]
+    [InlineData("dekan@urdu.edu.uz", "urdu.edu.uz")]
+    [InlineData("a@mail.company.co.uk", "company.co.uk")]
+    [InlineData("ali@evil-tuit.uz", "evil-tuit.uz")]
+    [InlineData("ali@tuit.uz.evil.com", "evil.com")]
+    public void OrganizationDomainOf_UsesRegistrableDomain(string email, string expected)
     {
-        Assert.Equal(expected, OrganizationEmailMatcher.Matches(email, domain));
+        Assert.Equal(expected, OrganizationEmailMatcher.OrganizationDomainOf(email));
     }
 
     [Theory]
-    [InlineData("gmail.com", true)]
-    [InlineData("GMAIL.COM", true)]
-    [InlineData("mail.ru", true)]
-    [InlineData("yandex.ru", true)]
-    [InlineData("tuit.uz", false)]
-    [InlineData("gmail.com.uz", false)]
-    public void IsPublicEmailDomain(string domain, bool expected)
+    [InlineData("ali@gmail.com")]
+    [InlineData("ali@GMAIL.com")]
+    [InlineData("ali@mail.ru")]
+    [InlineData("ali@yandex.ru")]
+    [InlineData("ali@umail.uz")]
+    [InlineData("ali@mailinator.com")]
+    [InlineData("not-an-email")]
+    [InlineData("ali@localhost")]
+    [InlineData("")]
+    public void OrganizationDomainOf_PublicOrInvalid_IsNull(string email)
     {
-        Assert.Equal(expected, OrganizationEmailMatcher.IsPublicEmailDomain(domain));
+        Assert.Null(OrganizationEmailMatcher.OrganizationDomainOf(email));
+    }
+
+    [Theory]
+    [InlineData("tuit.uz", "TUIT")]
+    [InlineData("rtm.uz", "RTM")]
+    [InlineData("urdu.edu.uz", "URDU")]
+    public void ShortNameFor_IsFirstLabelInUpperCase(string domain, string expected)
+    {
+        Assert.Equal(expected, OrganizationEmailMatcher.ShortNameFor(domain));
     }
 
     [Theory]

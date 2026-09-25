@@ -41,7 +41,6 @@ public class ChatDb : DbContext
     public DbSet<MessageView> MessageViews => Set<MessageView>();
     public DbSet<TwoFactorAuth> TwoFactorAuths => Set<TwoFactorAuth>();
     public DbSet<Organization> Organizations => Set<Organization>();
-    public DbSet<OrganizationDomain> OrganizationDomains => Set<OrganizationDomain>();
     public DbSet<OrganizationMember> OrganizationMembers => Set<OrganizationMember>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

@@ -9,7 +9,13 @@ public static class GroupFactory
     /// Creates the group chat aggregate: chat, group metadata, memberships and the initial
     /// "group created" service message, which also makes the chat visible in everyone's chat list.
     /// </summary>
-    public static Group Create(string title, string? description, User creator, IReadOnlyCollection<User> members, DateTime createdAt)
+    public static Group Create(
+        string title,
+        string? description,
+        User creator,
+        IReadOnlyCollection<User> members,
+        DateTime createdAt,
+        Organization? organization = null)
     {
         var chat = new Chat
         {
@@ -28,7 +34,9 @@ public static class GroupFactory
             Title = title,
             Description = description,
             CreatorId = creator.Id,
-            Creator = creator
+            Creator = creator,
+            OrganizationId = organization?.Id,
+            Organization = organization
         };
         chat.Groups.Add(group);
         return group;

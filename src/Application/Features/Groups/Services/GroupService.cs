@@ -119,7 +119,8 @@ public sealed class GroupService(
         var existingIds = group.Chat.Members.Select(member => member.UserId).ToHashSet();
         var newIds = request.UserIds.Where(id => !existingIds.Contains(id)).Distinct().ToArray();
         if (newIds.Length == 0) return Fail("Tanlangan foydalanuvchilar allaqachon guruhda.");
-        if (existingIds.Count + newIds.Length > GroupLimits.MaxMembers) return Fail($"Guruhda {GroupLimits.MaxMembers} tadan ortiq a'zo bo'lishi mumkin emas.");
+        var maxMembers = GroupLimits.MaxMembersFor(group.OrganizationId is not null);
+        if (existingIds.Count + newIds.Length > maxMembers) return Fail($"Guruhda {maxMembers} tadan ortiq a'zo bo'lishi mumkin emas.");
 
         var users = await repository.FindUsersAsync(newIds, cancellationToken);
         if (users.Count != newIds.Length) return Fail("Ba'zi foydalanuvchilar topilmadi.");
@@ -219,6 +220,101 @@ public sealed class GroupService(
         await PublishGroupUpdatedAsync(group, cancellationToken);
         return new(true, null);
     }
+
+    public async Task<GroupResult> CreateInviteLinkAsync(int currentUserId, int chatId, CancellationToken cancellationToken = default)
+    {
+        var group = await repository.GetGroupAsync(chatId, cancellationToken);
+        var actor = group is null ? null : FindMember(group, currentUserId);
+        if (group is null || actor is null) return Fail(NotFoundError);
+        if (!CanManageGroup(actor)) return Fail(ForbiddenError);
+
+        // A new token also revokes the previous link.
+        group.InviteLink = GroupInviteTokens.Create();
+        await repository.SaveChangesAsync(cancellationToken);
+        return new(ToDto(group, currentUserId), null);
+    }
+
+    public async Task<GroupResult> RevokeInviteLinkAsync(int currentUserId, int chatId, CancellationToken cancellationToken = default)
+    {
+        var group = await repository.GetGroupAsync(chatId, cancellationToken);
+        var actor = group is null ? null : FindMember(group, currentUserId);
+        if (group is null || actor is null) return Fail(NotFoundError);
+        if (!CanManageGroup(actor)) return Fail(ForbiddenError);
+
+        group.InviteLink = null;
+        await repository.SaveChangesAsync(cancellationToken);
+        return new(ToDto(group, currentUserId), null);
+    }
+
+    public async Task<GroupInvitePreviewDto?> GetInvitePreviewAsync(int currentUserId, string token, CancellationToken cancellationToken = default)
+    {
+        if (!GroupInviteTokens.IsWellFormed(token)) return null;
+        var group = await repository.GetGroupByInviteTokenAsync(token, cancellationToken);
+        return group is null ? null : GroupMapper.ToInvitePreview(group, FindMember(group, currentUserId) is not null);
+    }
+
+    public async Task<GroupResult> JoinByInviteAsync(int currentUserId, string token, CancellationToken cancellationToken = default)
+    {
+        const string invalidLinkError = "Taklif havolasi yaroqsiz yoki bekor qilingan.";
+        if (!GroupInviteTokens.IsWellFormed(token)) return Fail(invalidLinkError);
+        var group = await repository.GetGroupByInviteTokenAsync(token, cancellationToken);
+        if (group is null) return Fail(invalidLinkError);
+        if (FindMember(group, currentUserId) is not null) return new(ToDto(group, currentUserId), null);
+
+        var maxMembers = GroupLimits.MaxMembersFor(group.OrganizationId is not null);
+        if (group.Chat.Members.Count >= maxMembers) return Fail($"Guruhda {maxMembers} tadan ortiq a'zo bo'lishi mumkin emas.");
+
+        var user = (await repository.FindUsersAsync([currentUserId], cancellationToken)).FirstOrDefault();
+        if (user is null) return Fail("Foydalanuvchi aniqlanmadi.");
+
+        group.Chat.Members.Add(GroupFactory.CreateMember(user, ChatMemberRole.Member, timeProvider.GetUtcNow().UtcDateTime));
+        var serviceMessage = AddServiceMessage(group, user, MessageServiceAction.MemberJoinedViaInvite, GroupMapper.DisplayName(user));
+        await repository.SaveChangesAsync(cancellationToken);
+
+        await PublishServiceMessageAsync(serviceMessage, group, cancellationToken);
+        await PublishGroupUpdatedAsync(group, cancellationToken);
+        return new(ToDto(group, currentUserId), null);
+    }
+
+    public async Task<bool> CreateOrganizationGroupAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        var owner = (await repository.FindUsersAsync([userId], cancellationToken)).FirstOrDefault();
+        var organization = owner?.OrganizationMembership?.Organization;
+        if (owner is null || organization is null) return false;
+
+        var members = await repository.FindOrganizationUsersAsync(
+            organization.Id, [userId], GroupLimits.MaxOrganizationMembers - 1, cancellationToken);
+        var group = GroupFactory.Create(
+            organization.Domain,
+            $"@{organization.Domain} pochtasi bilan kirganlar avtomatik qo'shiladi. Boshqalar faqat admin qo'shganda yoki taklif havolasi orqali kiradi.",
+            owner, members, timeProvider.GetUtcNow().UtcDateTime, organization);
+        await repository.AddGroupAsync(group, cancellationToken);
+        await repository.SaveChangesAsync(cancellationToken);
+
+        await PublishServiceMessageAsync(group.Chat.Messages.Single(), group, cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> JoinViaOrganizationAsync(int chatId, int userId, CancellationToken cancellationToken = default)
+    {
+        var group = await repository.GetGroupAsync(chatId, cancellationToken);
+        if (group?.Organization is null || FindMember(group, userId) is not null) return false;
+        if (group.Chat.Members.Count >= GroupLimits.MaxOrganizationMembers) return false;
+
+        var user = (await repository.FindUsersAsync([userId], cancellationToken)).FirstOrDefault();
+        if (user is null || !IsOrganizationMember(user, group.Organization.Id)) return false;
+
+        group.Chat.Members.Add(GroupFactory.CreateMember(user, ChatMemberRole.Member, timeProvider.GetUtcNow().UtcDateTime));
+        var serviceMessage = AddServiceMessage(group, user, MessageServiceAction.MemberJoinedViaOrganization, group.Organization.Domain);
+        await repository.SaveChangesAsync(cancellationToken);
+
+        await PublishServiceMessageAsync(serviceMessage, group, cancellationToken);
+        await PublishGroupUpdatedAsync(group, cancellationToken);
+        return true;
+    }
+
+    private static bool IsOrganizationMember(User user, int organizationId) =>
+        user.OrganizationMembership?.OrganizationId == organizationId;
 
     private static bool CanManageGroup(ChatMember actor) =>
         actor.Role is ChatMemberRole.Admin or ChatMemberRole.Creator;

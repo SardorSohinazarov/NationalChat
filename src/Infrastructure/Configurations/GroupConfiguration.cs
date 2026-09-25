@@ -16,6 +16,13 @@ public class GroupConfiguration : IEntityTypeConfiguration<Group>
         builder.Property(x => x.Description).HasColumnType("TEXT");
         builder.Property(x => x.InviteLink).HasMaxLength(255);
         builder.HasIndex(x => x.ChatId).IsUnique();
+        builder.HasIndex(x => x.InviteLink).IsUnique();
+        builder.HasIndex(x => x.OrganizationId);
+
+        builder.HasOne(x => x.Organization)
+            .WithMany()
+            .HasForeignKey(x => x.OrganizationId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasOne(x => x.Photo)
             .WithMany()

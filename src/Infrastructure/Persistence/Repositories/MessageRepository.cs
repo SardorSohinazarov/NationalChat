@@ -54,8 +54,12 @@ public sealed class MessageRepository(ChatDb db) : IMessageRepository
     public Task<Message?> GetByIdAsync(int messageId, CancellationToken cancellationToken = default) =>
         db.Messages.AsNoTracking()
             .Include(message => message.Sender)
+                .ThenInclude(sender => sender.OrganizationMembership!)
+                .ThenInclude(membership => membership.Organization)
             .Include(message => message.ReplyToMessage)
-            .ThenInclude(message => message!.Sender)
+                .ThenInclude(message => message!.Sender)
+                .ThenInclude(sender => sender.OrganizationMembership!)
+                .ThenInclude(membership => membership.Organization)
             .FirstOrDefaultAsync(message => message.Id == messageId, cancellationToken);
 
     public Task<MessageDto?> GetDtoAsync(int messageId, int currentUserId, CancellationToken cancellationToken = default) =>

@@ -1,6 +1,6 @@
 # Maxfiy chatlar (E2E) — dizayn va reja
 
-> Holat: **1-bosqich (backend) va 2-bosqich (klient kripto qatlami) tayyor.** Keyingisi 3-bosqich (UI). Qarorlar 8-bo'limda, backend API 9-bo'limda, klient protokoli 10-bo'limda.
+> Holat: **1–3-bosqichlar tayyor** (backend, klient kripto qatlami, UI). Keyingisi 4-bosqich: taymerlar. Qarorlar 8-bo'limda, backend API 9-bo'limda, klient protokoli 10-bo'limda, UI 11-bo'limda.
 
 ## 0. Hozirgi holat
 
@@ -178,3 +178,16 @@ Kod: `NationalChatClient/src/app/features/chat/secret/`. Kripto qismi (`secret-c
 - **Saqlash:** IndexedDB (`nationalchat-secret-chats`): kalitlar, zanjir holati va ochilgan tarix. Zanjir holati va xabar bitta tranzaksiyada yoziladi. Logoutda va boshqa login qilinganda hammasi o'chiriladi.
 - **Yetkazish:** yuboriladigan xabar avval qurilmada saqlanadi (outbox), keyin qat'iy tartibda yuboriladi. Qabul qilishda xabar faqat ochilgandan yoki tashlab yuborilgandan keyin `ack` qilinadi. Handshake tugamagan bo'lsa, xabar serverda qoladi.
 - **Brauzer talabi:** Web Crypto'da X25519 (Chrome/Edge 133+, Firefox 130+, Safari 17+). Qo'llab-quvvatlanmasa `SecretChatService.supported()` false bo'ladi.
+
+## 11. UI (3-bosqich natijasi)
+
+- **Boshlash:** shaxsiy chat menyusida va suhbatdosh ma'lumot panelida "Maxfiy chat boshlash" tugmasi bor. Bu qurilmada o'sha odam bilan maxfiy chat allaqachon bo'lsa, o'shani ochadi.
+- **Ro'yxat:** chap panelda "Maxfiy chatlar" bo'limi, har birida qulf belgisi. Kelgan so'rovda belgi (badge) chiqadi va bir marta xabarnoma ko'rsatiladi.
+- **Chat oynasi** (`SecretConversationComponent`) oddiy suhbat oynasi o'rnida ochiladi:
+  - kelgan so'rov (qabul qilish yoki rad etish) va javob kutish holatlari;
+  - E2E haqida eslatma, ochilgan tarix, yuborilish holati (soat yoki ✓) va javob berish;
+  - faqat matn yoziladigan maydon: Enter yuboradi, Shift+Enter yangi qator ochadi;
+  - kalit tekshirish oynasi: 8 emoji va 6 guruh raqam;
+  - tasdiq bilan chatni yopish.
+- **Suhbatdosh chatni yopsa yoki logout qilsa:** chat ekrandan olib tashlanadi va "Maxfiy chat yopildi" xabari chiqadi.
+- **Tekshiruv:** ikki haqiqiy brauzer foydalanuvchisi bilan (Chromium, haqiqiy backend) so'rov, qabul qilish, ikki tomonlama xabar, javob, bir xil fingerprint, qayta yuklashdan keyingi tarix, yopish va telefon kengligi sinab ko'rildi.

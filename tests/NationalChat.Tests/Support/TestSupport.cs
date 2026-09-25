@@ -1,4 +1,6 @@
 using Application.Features.Groups;
+using Application.Features.Organizations;
+using Application.Features.Organizations.DataTransferObjects.Responses;
 using Domain.Entities;
 
 namespace NationalChat.Tests.Support;
@@ -24,8 +26,18 @@ public sealed class FakeGroupRepository : IGroupRepository
     public Task<Group?> GetGroupAsync(int chatId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Groups.FirstOrDefault(g => g.ChatId == chatId && g.Chat.DeletedAt == null));
 
+    public Task<Group?> GetGroupByInviteTokenAsync(string token, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Groups.FirstOrDefault(g => g.InviteLink == token && g.Chat.DeletedAt == null));
+
     public Task<IReadOnlyList<User>> FindUsersAsync(IReadOnlyCollection<int> userIds, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<User>>(Users.Where(u => userIds.Contains(u.Id) && u.IsProfileCompleted).ToList());
+
+    public Task<IReadOnlyList<User>> FindOrganizationUsersAsync(int organizationId, IReadOnlyCollection<int> excludedUserIds, int limit, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<User>>(Users
+            .Where(u => u.IsProfileCompleted && !excludedUserIds.Contains(u.Id) && u.OrganizationMembership?.OrganizationId == organizationId)
+            .OrderBy(u => u.Id)
+            .Take(limit)
+            .ToList());
 
     public Task AddGroupAsync(Group group, CancellationToken cancellationToken = default)
     {
@@ -62,6 +74,56 @@ public sealed class FakeGroupRepository : IGroupRepository
     }
 }
 
+/// <summary>
+/// In-memory <see cref="IOrganizationRepository"/>; memberships live on the users of the shared
+/// <see cref="FakeGroupRepository"/> so group rules and membership rules see the same data.
+/// </summary>
+public sealed class FakeOrganizationRepository(FakeGroupRepository groups) : IOrganizationRepository
+{
+    private int _nextId = 5000;
+
+    public List<Organization> Organizations { get; } = [];
+    public List<OrganizationMember> Members { get; } = [];
+
+    public Task<Organization?> FindByDomainAsync(string domain, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Organizations.FirstOrDefault(o => o.Domain == domain));
+
+    public Task<bool> TryAddOrganizationAsync(Organization organization, CancellationToken cancellationToken = default)
+    {
+        if (Organizations.Any(o => o.Domain == organization.Domain)) return Task.FromResult(false);
+        organization.Id = _nextId++;
+        Organizations.Add(organization);
+        return Task.FromResult(true);
+    }
+
+    public Task<OrganizationMember?> GetMembershipAsync(int userId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Members.FirstOrDefault(m => m.UserId == userId));
+
+    public Task<bool> TryAddMemberAsync(OrganizationMember member, CancellationToken cancellationToken = default)
+    {
+        if (Members.Any(m => m.UserId == member.UserId)) return Task.FromResult(false);
+        member.Id = _nextId++;
+        member.Organization = Organizations.Single(o => o.Id == member.OrganizationId);
+        Members.Add(member);
+        var user = groups.Users.FirstOrDefault(u => u.Id == member.UserId);
+        if (user is not null)
+        {
+            member.User = user;
+            user.OrganizationMembership = member;
+        }
+
+        return Task.FromResult(true);
+    }
+
+    public Task<IReadOnlyList<int>> GetOrganizationGroupChatIdsAsync(int organizationId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<int>>(groups.Groups.Where(g => g.OrganizationId == organizationId && g.Chat.DeletedAt == null).Select(g => g.ChatId).ToList());
+
+    public Task<MyOrganizationDto?> GetMyOrganizationAsync(int userId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Members.Where(m => m.UserId == userId)
+            .Select(m => (MyOrganizationDto?)new MyOrganizationDto(m.Organization.Id, m.Organization.Domain, m.Role))
+            .FirstOrDefault());
+}
+
 /// <summary>Builds users and groups for tests.</summary>
 public static class TestData
 {
@@ -76,6 +138,29 @@ public static class TestData
         IsProfileCompleted = completed,
         CreatedAt = Start,
     };
+
+    public static Organization Organization(int id, string domain) => new()
+    {
+        Id = id,
+        Domain = domain,
+        CreatedAt = Start,
+    };
+
+    /// <summary>Makes <paramref name="user"/> a verified member of <paramref name="organization"/>.</summary>
+    public static User Verified(this User user, Organization organization, OrganizationRole role = OrganizationRole.Member)
+    {
+        user.OrganizationMembership = new OrganizationMember
+        {
+            Id = user.Id * 7,
+            OrganizationId = organization.Id,
+            Organization = organization,
+            UserId = user.Id,
+            User = user,
+            Role = role,
+            VerifiedAt = Start,
+        };
+        return user;
+    }
 
     /// <summary>
     /// Creates a group; members are added in the given order, one minute apart,

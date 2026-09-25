@@ -8,6 +8,7 @@ using Application.Features.Chats;
 using Application.Features.Groups;
 using Application.Features.Users;
 using Application.Features.Messages;
+using Application.Features.Organizations;
 using Application.Features.Files;
 using Application.Features.Presence;
 using Application.Features.Stories;
@@ -54,6 +55,7 @@ public static class ServiceCollectionExtensions
             .AddApiDocumentation()
             .AddPersistence(configuration)
             .AddBackgroundJobs()
+            .AddOrganizations()
             .AddJwtAuthentication(jwtOptions)
             .AddApplicationServices(environment)
             .AddSecurityServices(jwtOptions, authOptions, authSecurityOptions, googleAuthOptions, antivirusOptions)
@@ -133,12 +135,21 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IMessageRepository, MessageRepository>();
         services.AddScoped<IMessageAttachmentRepository, MessageAttachmentRepository>();
         services.AddScoped<IStoryRepository, StoryRepository>();
+        services.AddScoped<IOrganizationRepository, OrganizationRepository>();
         return services;
     }
 
     private static IServiceCollection AddBackgroundJobs(this IServiceCollection services)
     {
         services.AddHostedService<SearchTextBackfill>();
+        return services;
+    }
+
+    /// <summary>Organizations need no configuration: they are created from e-mail domains on sign-in.</summary>
+    private static IServiceCollection AddOrganizations(this IServiceCollection services)
+    {
+        services.AddScoped<IOrganizationService, OrganizationService>();
+        services.AddScoped<IOrganizationMembershipService, OrganizationMembershipService>();
         return services;
     }
 

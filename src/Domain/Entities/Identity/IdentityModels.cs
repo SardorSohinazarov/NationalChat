@@ -14,6 +14,7 @@ public class User
     public DateTime CreatedAt { get; set; }
 
     public Photo? ProfilePhoto { get; set; }
+    public OrganizationMember? OrganizationMembership { get; set; }
     public ICollection<Message> SentMessages { get; set; } = new List<Message>();
     public ICollection<ChatMember> ChatMemberships { get; set; } = new List<ChatMember>();
     public ICollection<Reaction> Reactions { get; set; } = new List<Reaction>();

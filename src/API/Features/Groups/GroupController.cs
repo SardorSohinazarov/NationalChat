@@ -59,6 +59,28 @@ public sealed class GroupController(IGroupService groupService) : ControllerBase
         return result.Succeeded ? NoContent() : BadRequest(Result.Fail(result.Error ?? "Guruhdan chiqib bo'lmadi."));
     }
 
+    /// <summary>Creates a new invite link (the previous one stops working). Admins and the owner only.</summary>
+    [HttpPost("{chatId:int}/invite-link")]
+    public async Task<IActionResult> CreateInviteLink(int chatId, CancellationToken cancellationToken) =>
+        ToActionResult(await groupService.CreateInviteLinkAsync(GetCurrentUserId(), chatId, cancellationToken));
+
+    [HttpDelete("{chatId:int}/invite-link")]
+    public async Task<IActionResult> RevokeInviteLink(int chatId, CancellationToken cancellationToken) =>
+        ToActionResult(await groupService.RevokeInviteLinkAsync(GetCurrentUserId(), chatId, cancellationToken));
+
+    [HttpGet("invites/{token}")]
+    public async Task<IActionResult> GetInvite(string token, CancellationToken cancellationToken)
+    {
+        var preview = await groupService.GetInvitePreviewAsync(GetCurrentUserId(), token, cancellationToken);
+        return preview is null
+            ? NotFound(Result.Fail("Taklif havolasi yaroqsiz yoki bekor qilingan."))
+            : Ok(Result.Success(preview));
+    }
+
+    [HttpPost("invites/{token}/join")]
+    public async Task<IActionResult> JoinByInvite(string token, CancellationToken cancellationToken) =>
+        ToActionResult(await groupService.JoinByInviteAsync(GetCurrentUserId(), token, cancellationToken));
+
     private IActionResult ToActionResult(GroupResult result) =>
         result.Group is null
             ? BadRequest(Result.Fail(result.Error ?? "Amalni bajarib bo'lmadi."))

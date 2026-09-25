@@ -1,4 +1,5 @@
 using Application.Features.Chats.DataTransferObjects.Responses;
+using Application.Features.Organizations.Mappers;
 using Domain.Entities;
 
 namespace Application.Features.Chats.Mappers;
@@ -15,5 +16,6 @@ public static class PrivateChatMapper
         new(chat.Id, chat.CreatedAt, new(
             participant.Id, participant.Username, participant.FirstName, participant.LastName, participant.ProfilePhotoId,
             false,
-            participant.Sessions.Where(session => session.RevokedAt == null).Select(session => (DateTime?)session.LastActiveAt).Max()));
+            participant.Sessions.Where(session => session.RevokedAt == null).Select(session => (DateTime?)session.LastActiveAt).Max(),
+            OrganizationMapper.ToBadge(participant)));
 }

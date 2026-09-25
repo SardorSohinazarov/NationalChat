@@ -1,4 +1,5 @@
 using Application.Features.Groups.DataTransferObjects.Responses;
+using Application.Features.Organizations.Mappers;
 using Domain.Entities;
 
 namespace Application.Features.Groups.Mappers;
@@ -14,8 +15,11 @@ public static class GroupMapper
             .Select(member => ToDto(member, isOnline(member.UserId)))
             .ToArray();
         var myRole = group.Chat.Members.First(member => member.UserId == currentUserId).Role;
+        // Only people who may share the link see it.
+        var inviteToken = myRole is ChatMemberRole.Admin or ChatMemberRole.Creator ? group.InviteLink : null;
 
-        return new(group.ChatId, group.Title, group.Description, group.PhotoId, group.CreatorId, myRole, group.Chat.CreatedAt, members);
+        return new(group.ChatId, group.Title, group.Description, group.PhotoId, group.CreatorId, myRole, group.Chat.CreatedAt, members,
+            OrganizationMapper.ToBadge(group.Organization), inviteToken);
     }
 
     public static GroupMemberDto ToDto(ChatMember member, bool isOnline) =>
@@ -28,7 +32,11 @@ public static class GroupMapper
             member.Role,
             isOnline,
             member.User.Sessions.Where(session => session.RevokedAt == null).Select(session => (DateTime?)session.LastActiveAt).Max(),
-            member.JoinedAt);
+            member.JoinedAt,
+            OrganizationMapper.ToBadge(member.User));
+
+    public static GroupInvitePreviewDto ToInvitePreview(Group group, bool isMember) =>
+        new(group.ChatId, group.Title, group.Description, group.Chat.Members.Count, isMember);
 
     public static string DisplayName(User user) =>
         string.IsNullOrWhiteSpace(user.LastName) ? user.FirstName : $"{user.FirstName} {user.LastName}";

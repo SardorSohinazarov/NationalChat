@@ -1,3 +1,4 @@
+using Application.Features.Organizations.DataTransferObjects.Responses;
 using Domain.Entities;
 
 namespace Application.Features.Profiles.DataTransferObjects.Responses;
@@ -11,4 +12,5 @@ public sealed record ProfileDto(
     string? Bio,
     int? ProfilePhotoId,
     DateTime CreatedAt,
-    ScriptPreference ScriptPreference);
+    ScriptPreference ScriptPreference,
+    OrganizationBadgeDto? Organization);

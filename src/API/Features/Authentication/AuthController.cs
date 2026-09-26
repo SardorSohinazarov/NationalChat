@@ -5,6 +5,7 @@ using Application.Features.Authentication.DataTransferObjects.Requests;
 using Application.Features.Authentication.DataTransferObjects.Responses;
 using Application.Features.Authentication.DataTransferObjects.Session;
 using API.DataTransferObjects.Responses;
+using API.Options;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,7 +13,11 @@ namespace API.Features.Authentication;
 
 [ApiController]
 [Route("api/auth")]
-public sealed class AuthController(IAuthService authService, IWebHostEnvironment environment, GoogleAuthOptions googleAuthOptions) : ControllerBase
+public sealed class AuthController(
+    IAuthService authService,
+    IWebHostEnvironment environment,
+    GoogleAuthOptions googleAuthOptions,
+    ClientOriginOptions clientOrigins) : ControllerBase
 {
     private const string RefreshCookieName = "nationalchat_refresh";
 
@@ -221,18 +226,27 @@ public sealed class AuthController(IAuthService authService, IWebHostEnvironment
         return userId > 0 && int.TryParse(User.FindFirstValue("sid"), out sessionId);
     }
 
-    private void WriteRefreshCookie(TokenPair tokens)
-    {
-        Response.Cookies.Append(RefreshCookieName, tokens.RefreshToken, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = !environment.IsDevelopment(),
-            SameSite = SameSiteMode.Strict,
-            Expires = new DateTimeOffset(tokens.RefreshTokenExpiresAt),
-            Path = "/api/auth"
-        });
-    }
+    private void WriteRefreshCookie(TokenPair tokens) =>
+        Response.Cookies.Append(RefreshCookieName, tokens.RefreshToken, RefreshCookieOptions(new DateTimeOffset(tokens.RefreshTokenExpiresAt)));
 
     private void DeleteRefreshCookie() =>
-        Response.Cookies.Delete(RefreshCookieName, new CookieOptions { Path = "/api/auth", Secure = !environment.IsDevelopment(), SameSite = SameSiteMode.Strict });
+        Response.Cookies.Delete(RefreshCookieName, RefreshCookieOptions(expires: null));
+
+    /// <summary>
+    /// When the web client runs on another site (for example vercel.app against onrender.com), a SameSite=Strict
+    /// cookie is never sent and every session ends when the access token expires. SameSite=None is used only when
+    /// CORS is limited to known client origins; see <see cref="ClientOriginOptions.IsRestricted"/>.
+    /// </summary>
+    private CookieOptions RefreshCookieOptions(DateTimeOffset? expires)
+    {
+        var crossSite = clientOrigins.IsRestricted && !environment.IsDevelopment();
+        return new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = crossSite || !environment.IsDevelopment(),
+            SameSite = crossSite ? SameSiteMode.None : SameSiteMode.Strict,
+            Expires = expires,
+            Path = "/api/auth"
+        };
+    }
 }

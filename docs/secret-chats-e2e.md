@@ -1,6 +1,6 @@
 # Maxfiy chatlar (E2E) — dizayn va reja
 
-> Holat: **1–3-bosqichlar tayyor** (backend, klient kripto qatlami, UI). Keyingisi 4-bosqich: taymerlar. Qarorlar 8-bo'limda, backend API 9-bo'limda, klient protokoli 10-bo'limda, UI 11-bo'limda.
+> Holat: **1–4-bosqichlar tayyor** (backend, klient kripto qatlami, UI, taymerlar). Keyingisi 5-bosqich: shifrlangan fayllar. Qarorlar 8-bo'limda, backend API 9-bo'limda, klient protokoli 10-bo'limda, UI 11-bo'limda, taymerlar 12-bo'limda.
 
 ## 0. Hozirgi holat
 
@@ -172,7 +172,7 @@ Kod: `NationalChatClient/src/app/features/chat/secret/`. Kripto qismi (`secret-c
 - **Handshake:** har qurilma har chat uchun yangi X25519 kalit juftini yaratadi. Maxfiy kalit `extractable: false`: JS uni ishlata oladi, lekin baytlarini o'qiy olmaydi.
 - **Kalitlarni chiqarish:** `X25519(men, suhbatdosh)` → HKDF-SHA-256. Salt — `SHA-256("NationalChat secret chat v1")`, info — `nc-secret-v1|chatId|initiatorPub|participantPub`. Natija 64 bayt: ikki yo'nalish uchun ikki zanjir kaliti (tashabbuskor → qabul qiluvchi va teskarisi).
 - **Ratchet:** har xabarda `messageKey = HMAC(chainKey, 0x01)`, `chainKey' = HMAC(chainKey, 0x02)`. Eski zanjir kaliti unutiladi (forward secrecy). Xom baytlar faqat bir lahza mavjud bo'ladi va darhol nollanadi.
-- **Shifrlash:** AES-256-GCM. `additionalData` = `chatId|yo'nalish|seq`, yo'nalish `i` yoki `p`. Qabul qiluvchi yuboruvchining session id'sini bilmaydi, ikki qurilmali chatda yo'nalish bilan bog'lash unga teng. Blob: `[versiya=1][12 bayt iv][shifrlangan matn + teg]`. Ichida JSON: `{ v: 1, text, replyToSeq, sentAt }`.
+- **Shifrlash:** AES-256-GCM. `additionalData` = `chatId|yo'nalish|seq`, yo'nalish `i` yoki `p`. Qabul qiluvchi yuboruvchining session id'sini bilmaydi, ikki qurilmali chatda yo'nalish bilan bog'lash unga teng. Blob: `[versiya=1][12 bayt iv][shifrlangan matn + teg]`. Ichida JSON: `{ v: 1, kind, text, replyToSeq, sentAt, ttl }`. `kind` qiymatlari 12-bo'limda.
 - **Tartibsiz kelgan xabar:** 200 tagacha o'tkazib yuborilgan xabarning kaliti vaqtincha saqlanadi va bir marta ishlatiladi. Soxta xabar zanjirni siljitmaydi: holat faqat muvaffaqiyatli ochilgandan keyin saqlanadi.
 - **Fingerprint:** `SHA-256("nc-secret-fingerprint-v1" | initiatorPub | participantPub)`. U 8 ta emoji va 6 ta 5 xonali raqam guruhi ko'rinishida chiqadi.
 - **Saqlash:** IndexedDB (`nationalchat-secret-chats`): kalitlar, zanjir holati va ochilgan tarix. Zanjir holati va xabar bitta tranzaksiyada yoziladi. Logoutda va boshqa login qilinganda hammasi o'chiriladi.
@@ -191,3 +191,13 @@ Kod: `NationalChatClient/src/app/features/chat/secret/`. Kripto qismi (`secret-c
   - tasdiq bilan chatni yopish.
 - **Suhbatdosh chatni yopsa yoki logout qilsa:** chat ekrandan olib tashlanadi va "Maxfiy chat yopildi" xabari chiqadi.
 - **Tekshiruv:** ikki haqiqiy brauzer foydalanuvchisi bilan (Chromium, haqiqiy backend) so'rov, qabul qilish, ikki tomonlama xabar, javob, bir xil fingerprint, qayta yuklashdan keyingi tarix, yopish va telefon kengligi sinab ko'rildi.
+
+## 12. Taymerlar va tarixni tozalash (4-bosqich natijasi)
+
+- **Protokol:** payload'da `kind` bor: `text` (xabar), `timer` (chat taymerini o'zgartirish) yoki `clear` (tarixni tozalash). `ttl` — soniyalarda, 1 soniyadan 1 haftagacha, yoki `null` (o'chiq). Boshqaruv xabarlari oddiy xabar kabi shifrlanadi, server ularni ajrata olmaydi.
+- **Taymer:** har `text` xabari o'z `ttl`ini olib yuradi. Taymer o'zgarsa, ikki tomonda ham xizmat qatori ("Ali taymerni o'rnatdi…") chiqadi.
+- **Hisoblash qachon boshlanadi:** yuboruvchida xabar yuborilganda. Qabul qiluvchida xabar birinchi marta ekranda, ochiq tabda ko'ringanda — ko'rilmagan xabar o'chib ketmaydi.
+- **O'chirish:** muddati o'tgan xabarlar IndexedDB'dan butunlay o'chiriladi. Bu taymer bilan va har ishga tushishda bajariladi, sahifa qayta yuklanganda xabar qaytib kelmaydi. IndexedDB 2-versiyasida `expiresAt` indeksi bor, 1-versiyadan avtomatik yangilanadi.
+- **Tarixni tozalash:** ikki qurilmadagi yozishma o'chiriladi, chat va kalitlar qoladi.
+- **Tanlov:** o'chiq, 10 soniya, 1 daqiqa, 1 soat, 1 kun, 1 hafta.
+- **Cheklov:** vebda skrinshotni to'sib bo'lmaydi va buni aniqlab ham bo'lmaydi.

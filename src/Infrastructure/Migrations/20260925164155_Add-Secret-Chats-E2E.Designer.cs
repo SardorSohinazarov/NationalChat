@@ -3,6 +3,7 @@ using System;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(ChatDb))]
-    partial class ChatDbModelSnapshot : ModelSnapshot
+    [Migration("20260925164155_Add-Secret-Chats-E2E")]
+    partial class AddSecretChatsE2E
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -852,32 +855,6 @@ namespace Infrastructure.Migrations
                     b.ToTable("secret_chats", "chat");
                 });
 
-            modelBuilder.Entity("Domain.Entities.SecretFile", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("SecretChatId")
-                        .HasColumnType("integer");
-
-                    b.Property<long>("SizeBytes")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("UploaderSessionId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("SecretChatId");
-
-                    b.ToTable("secret_files", "messaging");
-                });
-
             modelBuilder.Entity("Domain.Entities.SecretMessage", b =>
                 {
                     b.Property<long>("Id")
@@ -1633,17 +1610,6 @@ namespace Infrastructure.Migrations
                     b.Navigation("ParticipantSession");
                 });
 
-            modelBuilder.Entity("Domain.Entities.SecretFile", b =>
-                {
-                    b.HasOne("Domain.Entities.SecretChat", "SecretChat")
-                        .WithMany("Files")
-                        .HasForeignKey("SecretChatId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("SecretChat");
-                });
-
             modelBuilder.Entity("Domain.Entities.SecretMessage", b =>
                 {
                     b.HasOne("Domain.Entities.SecretChat", "SecretChat")
@@ -1827,8 +1793,6 @@ namespace Infrastructure.Migrations
 
             modelBuilder.Entity("Domain.Entities.SecretChat", b =>
                 {
-                    b.Navigation("Files");
-
                     b.Navigation("Messages");
                 });
 

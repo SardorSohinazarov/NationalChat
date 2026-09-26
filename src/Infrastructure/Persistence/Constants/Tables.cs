@@ -11,6 +11,8 @@ public static class Tables
     public const string Channels = "channels";
     public const string ChannelSubscribers = "channel_subscribers";
     public const string SecretChats = "secret_chats";
+    public const string SecretMessages = "secret_messages";
+    public const string SecretFiles = "secret_files";
     public const string Messages = "messages";
     public const string Attachments = "attachments";
     public const string Reactions = "reactions";

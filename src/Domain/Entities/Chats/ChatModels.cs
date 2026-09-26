@@ -72,14 +72,64 @@ public class ChannelSubscriber
     public User User { get; set; }
 }
 
+/// <summary>
+/// End-to-end encrypted 1:1 chat bound to exactly one device (session) on each side.
+/// The server only ever sees public keys and ciphertext; message keys never leave the devices.
+/// </summary>
 public class SecretChat
 {
     public int Id { get; set; }
     public int InitiatorId { get; set; }
+    public int InitiatorSessionId { get; set; }
     public int ParticipantId { get; set; }
-    public string EncryptionKey { get; set; } = string.Empty;
+    /// <summary>Bound when the participant accepts on one of their devices.</summary>
+    public int? ParticipantSessionId { get; set; }
+    /// <summary>Base64 X25519 public key of the initiator's device (never a private or shared key).</summary>
+    public string InitiatorPublicKey { get; set; } = string.Empty;
+    public string? ParticipantPublicKey { get; set; }
+    public SecretChatStatus Status { get; set; }
+    /// <summary>Highest message sequence number accepted from each side; replays and reordering are rejected.</summary>
+    public long InitiatorLastSeq { get; set; }
+    public long ParticipantLastSeq { get; set; }
     public DateTime CreatedAt { get; set; }
+    public DateTime? AcceptedAt { get; set; }
+    public DateTime? ClosedAt { get; set; }
 
     public User Initiator { get; set; }
     public User Participant { get; set; }
+    public Session InitiatorSession { get; set; }
+    public Session? ParticipantSession { get; set; }
+    public ICollection<SecretMessage> Messages { get; set; } = new List<SecretMessage>();
+    public ICollection<SecretFile> Files { get; set; } = new List<SecretFile>();
+}
+
+/// <summary>
+/// An encrypted message waiting for delivery (store-and-forward). It is deleted as soon as the
+/// recipient device acknowledges it, so the server keeps no history.
+/// </summary>
+public class SecretMessage
+{
+    public long Id { get; set; }
+    public int SecretChatId { get; set; }
+    public int SenderSessionId { get; set; }
+    public long Seq { get; set; }
+    public byte[] Ciphertext { get; set; } = [];
+    public DateTime CreatedAt { get; set; }
+
+    public SecretChat SecretChat { get; set; }
+}
+
+/// <summary>
+/// An encrypted attachment waiting for the peer device. The key travels inside an end-to-end encrypted message,
+/// so the server holds only ciphertext; the blob is deleted once the recipient confirms it has the file.
+/// </summary>
+public class SecretFile
+{
+    public Guid Id { get; set; }
+    public int SecretChatId { get; set; }
+    public int UploaderSessionId { get; set; }
+    public long SizeBytes { get; set; }
+    public DateTime CreatedAt { get; set; }
+
+    public SecretChat SecretChat { get; set; }
 }

@@ -14,6 +14,7 @@ builder.Services.AddServices(builder.Configuration, builder.Environment);
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseMiddleware<SecurityHeadersMiddleware>();
 
 app.UseSwagger();
 app.UseSwaggerUI();

@@ -100,6 +100,7 @@ public class SecretChat
     public Session InitiatorSession { get; set; }
     public Session? ParticipantSession { get; set; }
     public ICollection<SecretMessage> Messages { get; set; } = new List<SecretMessage>();
+    public ICollection<SecretFile> Files { get; set; } = new List<SecretFile>();
 }
 
 /// <summary>
@@ -113,6 +114,21 @@ public class SecretMessage
     public int SenderSessionId { get; set; }
     public long Seq { get; set; }
     public byte[] Ciphertext { get; set; } = [];
+    public DateTime CreatedAt { get; set; }
+
+    public SecretChat SecretChat { get; set; }
+}
+
+/// <summary>
+/// An encrypted attachment waiting for the peer device. The key travels inside an end-to-end encrypted message,
+/// so the server holds only ciphertext; the blob is deleted once the recipient confirms it has the file.
+/// </summary>
+public class SecretFile
+{
+    public Guid Id { get; set; }
+    public int SecretChatId { get; set; }
+    public int UploaderSessionId { get; set; }
+    public long SizeBytes { get; set; }
     public DateTime CreatedAt { get; set; }
 
     public SecretChat SecretChat { get; set; }

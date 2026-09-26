@@ -21,6 +21,7 @@ public sealed class SecretChatServiceTests
     private static readonly string ValiKey = Key(2);
 
     private readonly FakeSecretChatRepository _repository = new();
+    private readonly FakeSecretFileStorage _storage = new();
     private readonly ISecretChatRealtimeNotifier _notifier = Substitute.For<ISecretChatRealtimeNotifier>();
     private readonly SecretChatService _service;
 
@@ -41,6 +42,7 @@ public sealed class SecretChatServiceTests
     private SecretChatService CreateService(DateTime now) => new(
         _repository,
         _notifier,
+        _storage,
         new CreateSecretChatRequestValidator(),
         new AcceptSecretChatRequestValidator(),
         new SendSecretMessageRequestValidator(),
@@ -63,9 +65,9 @@ public sealed class SecretChatServiceTests
     private static string Cipher(int length = 48) => Convert.ToBase64String(Enumerable.Repeat((byte)7, length).ToArray());
 
     /// <summary>Ali (laptop) asks Vali; Vali accepts on the phone.</summary>
-    private async Task<SecretChatDto> ActiveChatAsync()
+    private async Task<SecretChatDto> ActiveChatAsync(int aliSession = AliLaptop)
     {
-        var created = await _service.CreateAsync(_ali.Id, AliLaptop, new CreateSecretChatRequest(_vali.Id, AliKey));
+        var created = await _service.CreateAsync(_ali.Id, aliSession, new CreateSecretChatRequest(_vali.Id, AliKey));
         var accepted = await _service.AcceptAsync(_vali.Id, ValiPhone, created.Chat!.Id, new AcceptSecretChatRequest(ValiKey));
         Assert.Null(accepted.Error);
         _notifier.ClearReceivedCalls();
@@ -429,5 +431,75 @@ public sealed class SecretChatServiceTests
 
         Assert.Equal(SecretChatStatus.Active, _repository.Chats.Single().Status);
         Assert.Empty(_repository.Messages);
+    }
+
+    private SecretFileService Files(DateTime? now = null) => new(_repository, _storage, new FixedTimeProvider(new DateTimeOffset(now ?? Now)));
+
+    private static MemoryStream Blob(int length) => new(Enumerable.Repeat((byte)9, length).ToArray());
+
+    [Fact]
+    public async Task Files_UploadedByOneDevice_CanBeFetchedAndDeletedByThePeerOnly()
+    {
+        var chat = await ActiveChatAsync();
+
+        var upload = await Files().UploadAsync(_ali.Id, AliLaptop, chat.Id, Blob(100), 100);
+        Assert.Null(upload.Error);
+        var fileId = upload.FileId!.Value;
+        Assert.Equal(100, _repository.Files.Single().SizeBytes);
+
+        Assert.Null(await Files().OpenAsync(_vali.Id, ValiLaptop, chat.Id, fileId));
+        Assert.Null(await Files().OpenAsync(_guli.Id, GuliPhone, chat.Id, fileId));
+        await using (var stream = await Files().OpenAsync(_vali.Id, ValiPhone, chat.Id, fileId))
+        {
+            Assert.NotNull(stream);
+        }
+
+        Assert.False(await Files().DeleteAsync(_vali.Id, ValiLaptop, chat.Id, fileId));
+        Assert.True(await Files().DeleteAsync(_vali.Id, ValiPhone, chat.Id, fileId));
+        Assert.Empty(_repository.Files);
+        Assert.Empty(_storage.Blobs);
+    }
+
+    [Fact]
+    public async Task Files_RejectedBeforeAcceptOrWhenTooLargeOrEmpty()
+    {
+        var pending = (await _service.CreateAsync(_ali.Id, AliLaptop, new CreateSecretChatRequest(_vali.Id, AliKey))).Chat!;
+        Assert.Null((await Files().UploadAsync(_ali.Id, AliLaptop, pending.Id, Blob(10), 10)).FileId);
+
+        var chat = await ActiveChatAsync(AliPhone);
+        Assert.Null((await Files().UploadAsync(_ali.Id, AliPhone, chat.Id, Blob(0), 0)).FileId);
+        Assert.Null((await Files().UploadAsync(_ali.Id, AliPhone, chat.Id, Blob(10), SecretChatLimits.MaxFileBytes + 1)).FileId);
+        // A body longer than it claims is cut off at the limit and nothing is kept.
+        Assert.Null((await Files().UploadAsync(_ali.Id, AliPhone, chat.Id, Blob(SecretChatLimits.MaxFileBytes + 1), 10)).FileId);
+        Assert.Empty(_repository.Files);
+        Assert.Empty(_storage.Blobs);
+    }
+
+    [Fact]
+    public async Task Files_LimitedPerChatUntilDelivered()
+    {
+        var chat = await ActiveChatAsync();
+        for (var i = 0; i < SecretChatLimits.MaxUndeliveredFiles; i++)
+        {
+            Assert.NotNull((await Files().UploadAsync(_ali.Id, AliLaptop, chat.Id, Blob(1), 1)).FileId);
+        }
+
+        Assert.Null((await Files().UploadAsync(_ali.Id, AliLaptop, chat.Id, Blob(1), 1)).FileId);
+    }
+
+    [Fact]
+    public async Task Files_AreDeletedWhenTheChatClosesAndWhenTooOld()
+    {
+        var chat = await ActiveChatAsync();
+        await Files().UploadAsync(_ali.Id, AliLaptop, chat.Id, Blob(5), 5);
+        var other = await ActiveChatAsync(AliPhone);
+        await Files(Now.AddDays(-8)).UploadAsync(_ali.Id, AliPhone, other.Id, Blob(5), 5);
+        var fresh = (await Files().UploadAsync(_ali.Id, AliPhone, other.Id, Blob(5), 5)).FileId!.Value;
+
+        await _service.CloseAsync(_ali.Id, AliLaptop, chat.Id);
+        await _service.CleanupAsync();
+
+        Assert.Equal([fresh], _repository.Files.Select(f => f.Id));
+        Assert.Equal([fresh], _storage.Blobs.Keys.ToList());
     }
 }

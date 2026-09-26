@@ -16,6 +16,7 @@ public sealed class FakeSecretChatRepository : ISecretChatRepository
     public List<Session> Sessions { get; } = [];
     public List<SecretChat> Chats { get; } = [];
     public List<SecretMessage> Messages { get; } = [];
+    public List<SecretFile> Files { get; } = [];
 
     public Task<bool> IsSessionActiveAsync(int userId, int sessionId, DateTime now, CancellationToken cancellationToken = default) =>
         Task.FromResult(Sessions.Any(s => s.Id == sessionId && s.UserId == userId && s.RevokedAt == null && s.ExpiresAt > now));
@@ -95,6 +96,33 @@ public sealed class FakeSecretChatRepository : ISecretChatRepository
 
     public Task<int> DeleteUndeliveredBeforeAsync(DateTime createdBefore, CancellationToken cancellationToken = default) =>
         Task.FromResult(Messages.RemoveAll(m => m.CreatedAt < createdBefore));
+
+    public Task AddFileAsync(SecretFile file, CancellationToken cancellationToken = default)
+    {
+        Files.Add(file);
+        return Task.CompletedTask;
+    }
+
+    public Task<SecretFile?> GetFileAsync(int secretChatId, Guid fileId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Files.FirstOrDefault(f => f.Id == fileId && f.SecretChatId == secretChatId));
+
+    public Task<int> CountFilesAsync(int secretChatId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Files.Count(f => f.SecretChatId == secretChatId));
+
+    public void RemoveFile(SecretFile file) => Files.Remove(file);
+
+    public Task<IReadOnlyList<Guid>> DeleteFilesOfChatAsync(int secretChatId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(RemoveFiles(f => f.SecretChatId == secretChatId));
+
+    public Task<IReadOnlyList<Guid>> DeleteFilesCreatedBeforeAsync(DateTime createdBefore, CancellationToken cancellationToken = default) =>
+        Task.FromResult(RemoveFiles(f => f.CreatedAt < createdBefore));
+
+    private IReadOnlyList<Guid> RemoveFiles(Func<SecretFile, bool> match)
+    {
+        var removed = Files.Where(match).Select(f => f.Id).ToList();
+        Files.RemoveAll(f => removed.Contains(f.Id));
+        return removed;
+    }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {

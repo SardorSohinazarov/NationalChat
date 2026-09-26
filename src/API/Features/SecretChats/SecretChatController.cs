@@ -14,7 +14,7 @@ namespace API.Features.SecretChats;
 [ApiController]
 [Authorize]
 [Route("api/secret-chats")]
-public sealed class SecretChatController(ISecretChatService secretChatService) : ControllerBase
+public sealed class SecretChatController(ISecretChatService secretChatService, ISecretFileService secretFileService) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> List(CancellationToken cancellationToken) =>
@@ -67,6 +67,34 @@ public sealed class SecretChatController(ISecretChatService secretChatService) :
         var result = await secretChatService.AckAsync(GetCurrentUserId(), GetCurrentSessionId(), id, request, cancellationToken);
         return result.Succeeded ? NoContent() : BadRequest(Result.Fail(result.Error ?? "Amalni bajarib bo'lmadi."));
     }
+
+    /// <summary>
+    /// Uploads an attachment already encrypted on the device (raw body, application/octet-stream). It is not
+    /// scanned or probed: the server cannot read it. The key goes to the peer inside an encrypted message.
+    /// </summary>
+    [HttpPost("{id:int}/files")]
+    [RequestSizeLimit(SecretChatLimits.MaxFileBytes + 64 * 1024)]
+    public async Task<IActionResult> UploadFile(int id, CancellationToken cancellationToken)
+    {
+        var result = await secretFileService.UploadAsync(GetCurrentUserId(), GetCurrentSessionId(), id, Request.Body, Request.ContentLength, cancellationToken);
+        return result.FileId is { } fileId
+            ? Ok(Result.Success(new { fileId }))
+            : BadRequest(Result.Fail(result.Error ?? "Faylni yuklab bo'lmadi."));
+    }
+
+    [HttpGet("{id:int}/files/{fileId:guid}")]
+    public async Task<IActionResult> DownloadFile(int id, Guid fileId, CancellationToken cancellationToken)
+    {
+        var stream = await secretFileService.OpenAsync(GetCurrentUserId(), GetCurrentSessionId(), id, fileId, cancellationToken);
+        return stream is null ? NotFound(Result.Fail("Fayl topilmadi.")) : File(stream, "application/octet-stream");
+    }
+
+    /// <summary>The recipient device has stored the file: the server copy is deleted.</summary>
+    [HttpDelete("{id:int}/files/{fileId:guid}")]
+    public async Task<IActionResult> DeleteFile(int id, Guid fileId, CancellationToken cancellationToken) =>
+        await secretFileService.DeleteAsync(GetCurrentUserId(), GetCurrentSessionId(), id, fileId, cancellationToken)
+            ? NoContent()
+            : NotFound(Result.Fail("Fayl topilmadi."));
 
     private IActionResult ToActionResult(SecretChatResult result) =>
         result.Chat is null

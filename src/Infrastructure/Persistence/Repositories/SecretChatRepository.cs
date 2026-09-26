@@ -84,7 +84,31 @@ public sealed class SecretChatRepository(ChatDb db) : ISecretChatRepository
     public Task<int> DeleteUndeliveredBeforeAsync(DateTime createdBefore, CancellationToken cancellationToken = default) =>
         db.SecretMessages.Where(message => message.CreatedAt < createdBefore).ExecuteDeleteAsync(cancellationToken);
 
+    public Task AddFileAsync(SecretFile file, CancellationToken cancellationToken = default) =>
+        db.SecretFiles.AddAsync(file, cancellationToken).AsTask();
+
+    public Task<SecretFile?> GetFileAsync(int secretChatId, Guid fileId, CancellationToken cancellationToken = default) =>
+        db.SecretFiles.FirstOrDefaultAsync(file => file.Id == fileId && file.SecretChatId == secretChatId, cancellationToken);
+
+    public Task<int> CountFilesAsync(int secretChatId, CancellationToken cancellationToken = default) =>
+        db.SecretFiles.CountAsync(file => file.SecretChatId == secretChatId, cancellationToken);
+
+    public void RemoveFile(SecretFile file) => db.SecretFiles.Remove(file);
+
+    public Task<IReadOnlyList<Guid>> DeleteFilesOfChatAsync(int secretChatId, CancellationToken cancellationToken = default) =>
+        DeleteFilesAsync(db.SecretFiles.Where(file => file.SecretChatId == secretChatId), cancellationToken);
+
+    public Task<IReadOnlyList<Guid>> DeleteFilesCreatedBeforeAsync(DateTime createdBefore, CancellationToken cancellationToken = default) =>
+        DeleteFilesAsync(db.SecretFiles.Where(file => file.CreatedAt < createdBefore), cancellationToken);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) => db.SaveChangesAsync(cancellationToken);
+
+    private static async Task<IReadOnlyList<Guid>> DeleteFilesAsync(IQueryable<SecretFile> files, CancellationToken cancellationToken)
+    {
+        var ids = await files.Select(file => file.Id).ToListAsync(cancellationToken);
+        if (ids.Count > 0) await files.Where(file => ids.Contains(file.Id)).ExecuteDeleteAsync(cancellationToken);
+        return ids;
+    }
 
     private IQueryable<SecretChat> WithUsers() =>
         db.SecretChats.Include(chat => chat.Initiator).Include(chat => chat.Participant);

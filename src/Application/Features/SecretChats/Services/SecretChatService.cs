@@ -10,6 +10,7 @@ namespace Application.Features.SecretChats;
 public sealed class SecretChatService(
     ISecretChatRepository repository,
     ISecretChatRealtimeNotifier realtimeNotifier,
+    ISecretFileStorage fileStorage,
     IValidator<CreateSecretChatRequest> createValidator,
     IValidator<AcceptSecretChatRequest> acceptValidator,
     IValidator<SendSecretMessageRequest> sendValidator,
@@ -21,13 +22,6 @@ public sealed class SecretChatService(
     private const string InactiveSessionError = "Qurilma sessiyasi faol emas.";
     private const string DuplicateSeqError = "Bu tartib raqamli xabar allaqachon qabul qilingan.";
     private const int CleanupBatchSize = 200;
-
-    private enum Side
-    {
-        None,
-        Initiator,
-        Participant
-    }
 
     public async Task<IReadOnlyList<SecretChatDto>> ListAsync(int userId, int sessionId, CancellationToken cancellationToken = default)
     {
@@ -42,7 +36,7 @@ public sealed class SecretChatService(
         if (!await IsSessionActiveAsync(userId, sessionId, cancellationToken)) return null;
 
         var chat = await repository.GetAsync(secretChatId, cancellationToken);
-        return chat is null || SideOf(chat, userId, sessionId) == Side.None ? null : SecretChatMapper.ToDto(chat, userId);
+        return chat is null || SecretChatAccess.SideOf(chat, userId, sessionId) == SecretChatAccess.Side.None ? null : SecretChatMapper.ToDto(chat, userId);
     }
 
     public async Task<SecretChatResult> CreateAsync(int userId, int sessionId, CreateSecretChatRequest request, CancellationToken cancellationToken = default)
@@ -77,7 +71,7 @@ public sealed class SecretChatService(
         if (!await IsSessionActiveAsync(userId, sessionId, cancellationToken)) return Fail(InactiveSessionError);
 
         var chat = await repository.GetAsync(secretChatId, cancellationToken);
-        if (chat is null || SideOf(chat, userId, sessionId) == Side.None) return Fail(NotFoundError);
+        if (chat is null || SecretChatAccess.SideOf(chat, userId, sessionId) == SecretChatAccess.Side.None) return Fail(NotFoundError);
         if (chat.ParticipantId != userId) return Fail("So'rovni faqat qabul qiluvchi tasdiqlaydi.");
         if (chat.Status != SecretChatStatus.Pending) return Fail("Bu so'rov allaqachon javob olgan.");
 
@@ -99,7 +93,7 @@ public sealed class SecretChatService(
         if (!await IsSessionActiveAsync(userId, sessionId, cancellationToken)) return Fail(InactiveSessionError);
 
         var chat = await repository.GetAsync(secretChatId, cancellationToken);
-        if (chat is null || SideOf(chat, userId, sessionId) == Side.None) return Fail(NotFoundError);
+        if (chat is null || SecretChatAccess.SideOf(chat, userId, sessionId) == SecretChatAccess.Side.None) return Fail(NotFoundError);
 
         if (chat.Status != SecretChatStatus.Closed)
         {
@@ -116,14 +110,14 @@ public sealed class SecretChatService(
         if (!await IsSessionActiveAsync(userId, sessionId, cancellationToken)) return new(null, InactiveSessionError);
 
         var chat = await repository.GetAsync(secretChatId, cancellationToken);
-        var side = chat is null ? Side.None : SideOf(chat, userId, sessionId);
-        if (chat is null || side == Side.None) return new(null, NotFoundError);
+        var side = chat is null ? SecretChatAccess.Side.None : SecretChatAccess.SideOf(chat, userId, sessionId);
+        if (chat is null || side == SecretChatAccess.Side.None) return new(null, NotFoundError);
         if (chat.Status != SecretChatStatus.Active) return new(null, "Maxfiy chat faol emas.");
 
-        var lastSeq = side == Side.Initiator ? chat.InitiatorLastSeq : chat.ParticipantLastSeq;
+        var lastSeq = side == SecretChatAccess.Side.Initiator ? chat.InitiatorLastSeq : chat.ParticipantLastSeq;
         if (request.Seq <= lastSeq) return new(null, DuplicateSeqError, Duplicate: true);
 
-        if (side == Side.Initiator) chat.InitiatorLastSeq = request.Seq;
+        if (side == SecretChatAccess.Side.Initiator) chat.InitiatorLastSeq = request.Seq;
         else chat.ParticipantLastSeq = request.Seq;
 
         var ciphertext = SecretChatBase64.TryDecode(request.Ciphertext)!;
@@ -134,7 +128,7 @@ public sealed class SecretChatService(
         }
 
         var dto = SecretChatMapper.ToDto(message);
-        var recipientSessionId = side == Side.Initiator ? chat.ParticipantSessionId!.Value : chat.InitiatorSessionId;
+        var recipientSessionId = side == SecretChatAccess.Side.Initiator ? chat.ParticipantSessionId!.Value : chat.InitiatorSessionId;
         await realtimeNotifier.MessageReceivedAsync(dto, recipientSessionId, cancellationToken);
         return new(dto, null);
     }
@@ -146,7 +140,7 @@ public sealed class SecretChatService(
         if (!await IsSessionActiveAsync(userId, sessionId, cancellationToken)) return new(null, InactiveSessionError);
 
         var chat = await repository.GetAsync(secretChatId, cancellationToken);
-        if (chat is null || !IsBound(chat, userId, sessionId)) return new(null, NotFoundError);
+        if (chat is null || !SecretChatAccess.IsBound(chat, userId, sessionId)) return new(null, NotFoundError);
 
         var messages = await repository.GetQueueAsync(chat.Id, sessionId, query.AfterId, query.Limit + 1, cancellationToken);
         var hasMore = messages.Count > query.Limit;
@@ -161,7 +155,7 @@ public sealed class SecretChatService(
         if (!await IsSessionActiveAsync(userId, sessionId, cancellationToken)) return new(false, InactiveSessionError);
 
         var chat = await repository.GetAsync(secretChatId, cancellationToken);
-        if (chat is null || !IsBound(chat, userId, sessionId)) return new(false, NotFoundError);
+        if (chat is null || !SecretChatAccess.IsBound(chat, userId, sessionId)) return new(false, NotFoundError);
 
         await repository.DeleteDeliveredAsync(chat.Id, sessionId, request.UpToId, cancellationToken);
         return new(true, null);
@@ -185,7 +179,9 @@ public sealed class SecretChatService(
             if (stale.Count < CleanupBatchSize) break;
         }
 
-        await repository.DeleteUndeliveredBeforeAsync(now - SecretChatLimits.UndeliveredRetention, cancellationToken);
+        var cutoff = now - SecretChatLimits.UndeliveredRetention;
+        await repository.DeleteUndeliveredBeforeAsync(cutoff, cancellationToken);
+        await DeleteBlobsAsync(await repository.DeleteFilesCreatedBeforeAsync(cutoff, cancellationToken), cancellationToken);
     }
 
     private async Task CloseChatsAsync(IReadOnlyList<SecretChat> chats, CancellationToken cancellationToken)
@@ -193,14 +189,17 @@ public sealed class SecretChatService(
         if (chats.Count == 0) return;
 
         var now = Now();
+        var fileIds = new List<Guid>();
         foreach (var chat in chats)
         {
             chat.Status = SecretChatStatus.Closed;
             chat.ClosedAt = now;
             await repository.DeleteMessagesAsync(chat.Id, cancellationToken);
+            fileIds.AddRange(await repository.DeleteFilesOfChatAsync(chat.Id, cancellationToken));
         }
 
         await repository.SaveChangesAsync(cancellationToken);
+        await DeleteBlobsAsync(fileIds, cancellationToken);
 
         foreach (var chat in chats)
         {
@@ -213,22 +212,10 @@ public sealed class SecretChatService(
         }
     }
 
-    /// <summary>
-    /// The initiator acts only from the device that started the chat. The participant acts from the device that
-    /// accepted it; while the request is pending, any of their devices may see, accept or decline it.
-    /// </summary>
-    private static Side SideOf(SecretChat chat, int userId, int sessionId)
+    private async Task DeleteBlobsAsync(IReadOnlyList<Guid> fileIds, CancellationToken cancellationToken)
     {
-        if (chat.InitiatorId == userId && chat.InitiatorSessionId == sessionId) return Side.Initiator;
-        if (chat.ParticipantId != userId) return Side.None;
-        if (chat.ParticipantSessionId == sessionId) return Side.Participant;
-        return chat.ParticipantSessionId is null && chat.Status == SecretChatStatus.Pending ? Side.Participant : Side.None;
+        foreach (var fileId in fileIds) await fileStorage.DeleteAsync(fileId, cancellationToken);
     }
-
-    /// <summary>Only the two bound devices ever touch the ciphertext queue.</summary>
-    private static bool IsBound(SecretChat chat, int userId, int sessionId) =>
-        (chat.InitiatorId == userId && chat.InitiatorSessionId == sessionId) ||
-        (chat.ParticipantId == userId && chat.ParticipantSessionId == sessionId);
 
     private Task<bool> IsSessionActiveAsync(int userId, int sessionId, CancellationToken cancellationToken) =>
         repository.IsSessionActiveAsync(userId, sessionId, Now(), cancellationToken);

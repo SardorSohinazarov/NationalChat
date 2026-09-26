@@ -22,4 +22,13 @@ public static class SecretChatFactory
         Ciphertext = ciphertext,
         CreatedAt = now,
     };
+
+    public static SecretFile CreateFile(Guid id, int secretChatId, int uploaderSessionId, long sizeBytes, DateTime now) => new()
+    {
+        Id = id,
+        SecretChatId = secretChatId,
+        UploaderSessionId = uploaderSessionId,
+        SizeBytes = sizeBytes,
+        CreatedAt = now,
+    };
 }

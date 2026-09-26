@@ -36,6 +36,7 @@ public class ChatDb : DbContext
     public DbSet<Contact> Contacts => Set<Contact>();
     public DbSet<SecretChat> SecretChats => Set<SecretChat>();
     public DbSet<SecretMessage> SecretMessages => Set<SecretMessage>();
+    public DbSet<SecretFile> SecretFiles => Set<SecretFile>();
     public DbSet<Channel> Channels => Set<Channel>();
     public DbSet<CallParticipant> CallParticipants => Set<CallParticipant>();
     public DbSet<StoryView> StoryViews => Set<StoryView>();

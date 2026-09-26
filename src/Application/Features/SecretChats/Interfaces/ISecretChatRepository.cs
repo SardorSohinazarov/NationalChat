@@ -43,5 +43,19 @@ public interface ISecretChatRepository
     /// <summary>Drops undelivered ciphertext older than <paramref name="createdBefore"/>; returns the number removed.</summary>
     Task<int> DeleteUndeliveredBeforeAsync(DateTime createdBefore, CancellationToken cancellationToken = default);
 
+    Task AddFileAsync(SecretFile file, CancellationToken cancellationToken = default);
+
+    Task<SecretFile?> GetFileAsync(int secretChatId, Guid fileId, CancellationToken cancellationToken = default);
+
+    Task<int> CountFilesAsync(int secretChatId, CancellationToken cancellationToken = default);
+
+    void RemoveFile(SecretFile file);
+
+    /// <summary>Deletes the chat's file records and returns their ids so the blobs can be removed too.</summary>
+    Task<IReadOnlyList<Guid>> DeleteFilesOfChatAsync(int secretChatId, CancellationToken cancellationToken = default);
+
+    /// <summary>Deletes file records older than <paramref name="createdBefore"/> and returns their ids.</summary>
+    Task<IReadOnlyList<Guid>> DeleteFilesCreatedBeforeAsync(DateTime createdBefore, CancellationToken cancellationToken = default);
+
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

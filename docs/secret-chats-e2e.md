@@ -1,6 +1,6 @@
 # Maxfiy chatlar (E2E) — dizayn va reja
 
-> Holat: **1–4-bosqichlar tayyor** (backend, klient kripto qatlami, UI, taymerlar). Keyingisi 5-bosqich: shifrlangan fayllar. Qarorlar 8-bo'limda, backend API 9-bo'limda, klient protokoli 10-bo'limda, UI 11-bo'limda, taymerlar 12-bo'limda.
+> Holat: **1–5-bosqichlar tayyor** (backend, klient kripto qatlami, UI, taymerlar, shifrlangan fayllar). Qarorlar 8-bo'limda, backend API 9-bo'limda, klient protokoli 10-bo'limda, UI 11-bo'limda, taymerlar 12-bo'limda, fayllar 13-bo'limda.
 
 ## 0. Hozirgi holat
 
@@ -172,7 +172,7 @@ Kod: `NationalChatClient/src/app/features/chat/secret/`. Kripto qismi (`secret-c
 - **Handshake:** har qurilma har chat uchun yangi X25519 kalit juftini yaratadi. Maxfiy kalit `extractable: false`: JS uni ishlata oladi, lekin baytlarini o'qiy olmaydi.
 - **Kalitlarni chiqarish:** `X25519(men, suhbatdosh)` → HKDF-SHA-256. Salt — `SHA-256("NationalChat secret chat v1")`, info — `nc-secret-v1|chatId|initiatorPub|participantPub`. Natija 64 bayt: ikki yo'nalish uchun ikki zanjir kaliti (tashabbuskor → qabul qiluvchi va teskarisi).
 - **Ratchet:** har xabarda `messageKey = HMAC(chainKey, 0x01)`, `chainKey' = HMAC(chainKey, 0x02)`. Eski zanjir kaliti unutiladi (forward secrecy). Xom baytlar faqat bir lahza mavjud bo'ladi va darhol nollanadi.
-- **Shifrlash:** AES-256-GCM. `additionalData` = `chatId|yo'nalish|seq`, yo'nalish `i` yoki `p`. Qabul qiluvchi yuboruvchining session id'sini bilmaydi, ikki qurilmali chatda yo'nalish bilan bog'lash unga teng. Blob: `[versiya=1][12 bayt iv][shifrlangan matn + teg]`. Ichida JSON: `{ v: 1, kind, text, replyToSeq, sentAt, ttl }`. `kind` qiymatlari 12-bo'limda.
+- **Shifrlash:** AES-256-GCM. `additionalData` = `chatId|yo'nalish|seq`, yo'nalish `i` yoki `p`. Qabul qiluvchi yuboruvchining session id'sini bilmaydi, ikki qurilmali chatda yo'nalish bilan bog'lash unga teng. Blob: `[versiya=1][12 bayt iv][shifrlangan matn + teg]`. Ichida JSON: `{ v: 1, kind, text, replyToSeq, sentAt, ttl, attachment }`. `kind` qiymatlari 12-bo'limda, `attachment` 13-bo'limda.
 - **Tartibsiz kelgan xabar:** 200 tagacha o'tkazib yuborilgan xabarning kaliti vaqtincha saqlanadi va bir marta ishlatiladi. Soxta xabar zanjirni siljitmaydi: holat faqat muvaffaqiyatli ochilgandan keyin saqlanadi.
 - **Fingerprint:** `SHA-256("nc-secret-fingerprint-v1" | initiatorPub | participantPub)`. U 8 ta emoji va 6 ta 5 xonali raqam guruhi ko'rinishida chiqadi.
 - **Saqlash:** IndexedDB (`nationalchat-secret-chats`): kalitlar, zanjir holati va ochilgan tarix. Zanjir holati va xabar bitta tranzaksiyada yoziladi. Logoutda va boshqa login qilinganda hammasi o'chiriladi.
@@ -201,3 +201,23 @@ Kod: `NationalChatClient/src/app/features/chat/secret/`. Kripto qismi (`secret-c
 - **Tarixni tozalash:** ikki qurilmadagi yozishma o'chiriladi, chat va kalitlar qoladi.
 - **Tanlov:** o'chiq, 10 soniya, 1 daqiqa, 1 soat, 1 kun, 1 hafta.
 - **Cheklov:** vebda skrinshotni to'sib bo'lmaydi va buni aniqlab ham bo'lmaydi.
+
+## 13. Shifrlangan fayllar (5-bosqich natijasi)
+
+- **Shifrlash:** fayl brauzerda har fayl uchun alohida tasodifiy AES-256-GCM kalit bilan shifrlanadi. AAD sifatida `nc-secret-file-v1` ishlatiladi.
+- **Kalit qanday boradi:** kalit, IV, nom, tur va hajm `attachment` maydonida, E2E shifrlangan xabar ichida boradi. Server faqat shifrlangan blobni ko'radi.
+- **Backend endpointlari** — faqat ikki bog'langan qurilma uchun:
+  - `POST /api/secret-chats/{id}/files` — body xom baytlar (`application/octet-stream`), javobi `{ fileId }`.
+  - `GET /api/secret-chats/{id}/files/{fileId}` — shifrlangan baytlar.
+  - `DELETE /api/secret-chats/{id}/files/{fileId}` — qabul qiluvchi faylni olganini bildiradi, server nusxasi o'chiriladi.
+- **Backend'da saqlash:**
+  - Bloblar `App_Data/secret-files` papkasida turadi: web root'dan tashqarida, nomi server bergan GUID.
+  - ClamAV va ffmpeg ishlatilmaydi, chunki server faylni o'qiy olmaydi. Hajm baribir cheklanadi: fayl 20 MB gacha, bitta chatda yetkazilmagan fayl 20 tagacha.
+  - Chat yopilganda va 7 kundan keyin (tozalash fon ishi) bloblar o'chiriladi.
+  - Migratsiya: `Add-Secret-Files`.
+- **Klient:**
+  - Qabul qiluvchi faylni fonda yuklab oladi, ochadi, IndexedDB'ga (`files` store, v3) saqlaydi, keyin serverdagi nusxani o'chiradi.
+  - Yuklab olish uzilsa, qayta ulanganda yana urinadi; "Qayta urinish" tugmasi ham bor.
+  - Fayl o'z xabari bilan birga o'chadi: taymer, tarixni tozalash, chatni yopish, logout.
+- **Xavfsizlik:** faqat PNG, JPEG, WebP va GIF `<img>` orqali ko'rsatiladi. Boshqa hamma fayl (HTML, SVG, PDF…) faqat yuklab olinadi va turi `application/octet-stream` qilib beriladi. Sababi: `blob:` URL sayt origin'ida ishlaydi, suhbatdosh yuborgan faylni ochish uning skriptini ilova nomidan ishga tushirishi mumkin.
+- **Preview haqida:** rejadagi alohida thumbnail qilinmadi. Qabul qiluvchi faylning o'zini darhol yuklab oladi, shuning uchun preview uning o'zidan ko'rsatiladi.

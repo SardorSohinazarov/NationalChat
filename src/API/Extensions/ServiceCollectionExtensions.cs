@@ -213,6 +213,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IChatService, ChatService>();
         services.AddScoped<IGroupService, GroupService>();
         services.AddScoped<ISecretChatService, SecretChatService>();
+        services.AddScoped<ISecretFileService, SecretFileService>();
+        // Encrypted secret chat attachments stay out of the web root.
+        services.AddSingleton<ISecretFileStorage>(_ => new LocalSecretFileStorage(Path.Combine(environment.ContentRootPath, "App_Data", "secret-files")));
         services.AddScoped<IUserDiscoveryService, UserDiscoveryService>();
         services.AddScoped<IMessageService, MessageService>();
         services.AddScoped<IMessageAttachmentService, MessageAttachmentService>();

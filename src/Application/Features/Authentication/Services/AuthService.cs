@@ -284,15 +284,30 @@ public sealed class AuthService(
     /// Every sign-in path (OTP code, Google with a verified e-mail, registration) ends here, i.e. only after the
     /// e-mail address has been proven, which is what organization membership relies on.
     /// </summary>
+    /// <summary>
+    /// Signing in again from a browser that still holds a valid refresh cookie replaces that browser's session instead
+    /// of adding another device. The old session is revoked like a logout (its secret chats close after the save).
+    /// </summary>
+    private async Task<Session?> ReplacePreviousSessionAsync(AuthSessionMetadata metadata, DateTime now, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(metadata.ReplacedRefreshToken)) return null;
+        var previous = await store.FindSessionByRefreshTokenHashAsync(refreshTokenHasher.Hash(metadata.ReplacedRefreshToken), cancellationToken);
+        if (previous is null || previous.RevokedAt is not null || previous.ExpiresAt <= now) return null;
+        previous.RevokedAt = now;
+        return previous;
+    }
+
     private async Task<TokenPair> CreateSessionAsync(User user, AuthSessionMetadata metadata, DateTime now, CancellationToken cancellationToken)
     {
         await organizationMembership.EnsureMembershipAsync(user, cancellationToken);
+        var replaced = await ReplacePreviousSessionAsync(metadata, now, cancellationToken);
 
         var refreshToken = CreateRefreshToken();
         var expiresAt = now.Add(options.RefreshTokenLifetime);
         var session = AuthEntityFactory.CreateSession(user.Id, metadata, refreshTokenHasher.Hash(refreshToken), now, expiresAt);
         await store.AddSessionAsync(session, cancellationToken);
         await store.SaveChangesAsync(cancellationToken);
+        if (replaced is not null) await secretChats.CloseForSessionsAsync([replaced.Id], cancellationToken);
 
         var accessTokenExpiresAt = now.Add(options.AccessTokenLifetime);
         return new TokenPair(

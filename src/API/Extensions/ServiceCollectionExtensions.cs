@@ -1,5 +1,6 @@
 using API.DataTransferObjects.Responses;
 using API.Hubs;
+using API.Options;
 using Application.Features.Authentication;
 using Application.Features.Authentication.Validators;
 using Application.Features.Contacts;
@@ -68,8 +69,12 @@ public static class ServiceCollectionExtensions
 
     private static IServiceCollection AddApiTransport(this IServiceCollection services, IConfiguration configuration)
     {
+        var clientOrigins = configuration.GetSection(ClientOriginOptions.SectionName).Get<ClientOriginOptions>() ?? new ClientOriginOptions();
+        services.AddSingleton(clientOrigins);
+        // Without configured origins every origin stays allowed (as before) and the refresh cookie stays SameSite=Strict,
+        // which keeps credentialed cross-site calls from working at all. See ClientOriginOptions.
         services.AddCors(options => options.AddPolicy("Client", policy => policy
-            .SetIsOriginAllowed(_ => true)
+            .SetIsOriginAllowed(clientOrigins.IsRestricted ? clientOrigins.IsAllowed : _ => true)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials()));

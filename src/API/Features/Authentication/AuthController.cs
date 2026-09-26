@@ -212,7 +212,11 @@ public sealed class AuthController(
             systemVersion ?? "Unknown",
             appVersion ?? "Web",
             GetIpAddress(),
-            Request.Headers.UserAgent.ToString());
+            Request.Headers.UserAgent.ToString())
+        {
+            // The refresh cookie this browser already has, if any: signing in again replaces that session.
+            ReplacedRefreshToken = Request.Cookies.TryGetValue(RefreshCookieName, out var previous) ? previous : null,
+        };
 
     private string GetIpAddress() => HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
 
